@@ -33,8 +33,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Run unit tests
-        run: mvn test --batch-mode --no-transfer-progress -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false
+      - name: Test all modules except start (pure unit tests)
+        run: mvn test --batch-mode --no-transfer-progress -pl '!code-review-start'
+      - name: Test start module (skip eval suite)
+        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='!AgentEvaluationSuiteTest' -Dsurefire.failIfNoSpecifiedTests=false
 
   integration-test:
     name: Integration Tests (with services)
@@ -57,12 +59,13 @@ jobs:
         options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
 
       milvus:
-        image: milvusdb/milvus:v2.5.0
-        command: milvus run standalone
+        image: milvusdb/milvus:v2.3.4
+        env:
+          COMMON_STORAGETYPE: local
         ports:
           - 19530:19530
           - 9091:9091
-        options: --health-cmd="curl -sf http://localhost:9091/healthz" --health-interval=30s --health-timeout=20s --health-retries=10 --health-start-period=90s
+        options: --health-cmd="curl -sf http://localhost:9091/healthz" --health-interval=30s --health-timeout=20s --health-retries=10 --health-start-period=120s
 
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +74,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Wait for services
+      - name: Wait for MySQL and Redis
         run: |
           echo "Waiting for MySQL..."
           for i in $(seq 1 20); do
@@ -83,15 +86,19 @@ jobs:
             redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG && break
             sleep 2
           done
-          echo "Waiting for Milvus..."
+      - name: Wait for Milvus
+        timeout-minutes: 5
+        run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:9091/healthz > /dev/null 2>&1; then
+            if curl -sf http://localhost:9091/healthz 2>/dev/null; then
               echo "Milvus is ready!"
               exit 0
             fi
-            echo "  attempt $i/30..."
+            echo "Milvus attempt $i/30, waiting..."
             sleep 10
           done
+          echo "=== Milvus logs ==="
+          docker logs $(docker ps -q --filter ancestor=milvusdb/milvus:v2.3.4) 2>/dev/null || true
           echo "Milvus startup timed out" && exit 1
       - name: Run evaluation tests
-        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -DfailIfNoTests=false
+        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -Dsurefire.failIfNoSpecifiedTests=false
