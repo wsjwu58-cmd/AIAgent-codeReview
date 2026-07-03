@@ -36,10 +36,10 @@ jobs:
       - name: Test all modules except start (pure unit tests)
         run: mvn test --batch-mode --no-transfer-progress -pl '!code-review-start'
       - name: Test start module (skip eval suite)
-        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='!AgentEvaluationSuiteTest' -Dsurefire.failIfNoSpecifiedTests=false
+        run: mvn test -am --batch-mode --no-transfer-progress -pl code-review-start -Dtest='!AgentEvaluationSuiteTest' -Dsurefire.failIfNoSpecifiedTests=false
 
   integration-test:
-    name: Integration Tests (with services)
+    name: Integration Tests (MySQL + Redis + Milvus)
     runs-on: ubuntu-latest
 
     services:
@@ -66,52 +66,51 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Start Milvus standalone
+      - name: Start Milvus standalone (reduced footprint)
         run: |
-          docker run -d --name milvus-standalone \
-            --memory 4g \
+          docker run -d --name milvus-slim \
+            --cpus 2 --memory 4g --memory-swap 4g \
+            -e ETCD_AUTO_COMPACTION_MODE=revision \
+            -e ETCD_AUTO_COMPACTION_RETENTION=1000 \
+            -e ETCD_QUOTA_BACKEND_BYTES=4294967296 \
+            -e ETCD_SNAPSHOT_COUNT=50000 \
             -p 19530:19530 \
             -p 9091:9091 \
-            milvusdb/milvus:v2.3.4 \
+            milvusdb/milvus:v2.4.13 \
             milvus run standalone
 
       - name: Wait for MySQL and Redis
         run: |
           echo "Waiting for MySQL..."
           for i in $(seq 1 30); do
-            if mysqladmin ping -h 127.0.0.1 -u root -pqwer1234 --silent 2>/dev/null; then
-              echo "MySQL ready (attempt $i)"
-              break
-            fi
+            mysqladmin ping -h 127.0.0.1 -u root -pqwer1234 --silent 2>/dev/null && break
             sleep 3
           done
           echo "Waiting for Redis..."
           for i in $(seq 1 10); do
-            if redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG; then
-              echo "Redis ready (attempt $i)"
-              break
-            fi
+            redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG && break
             sleep 2
           done
 
       - name: Wait for Milvus
-        timeout-minutes: 5
+        timeout-minutes: 6
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -sf http://localhost:9091/healthz 2>/dev/null; then
               echo "Milvus ready (attempt $i)"
               exit 0
             fi
-            echo "Milvus starting... attempt $i/30"
+            echo "Milvus starting... $i/60"
+            # print container status every 10 attempts
+            if [ $((i % 10)) -eq 0 ]; then
+              docker ps -a --filter name=milvus-slim --format "{{.Status}}"
+              docker logs milvus-slim 2>&1 | tail -5
+            fi
             sleep 10
           done
-          echo "=== Milvus container logs ==="
-          docker logs milvus-standalone 2>&1 | tail -50 || true
-          echo "Milvus startup timed out"
+          echo "=== Full Milvus logs ==="
+          docker logs milvus-slim 2>&1 || true
           exit 1
 
-      - name: Build all modules (install to local repo)
-        run: mvn install --batch-mode --no-transfer-progress -DskipTests
-
       - name: Run evaluation test suite
-        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -Dsurefire.failIfNoSpecifiedTests=false
+        run: mvn test -am --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -Dsurefire.failIfNoSpecifiedTests=false
