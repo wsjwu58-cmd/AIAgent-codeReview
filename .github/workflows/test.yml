@@ -2,39 +2,23 @@ name: Run Tests
 
 on:
   push:
-    branches: [ master, main, develop, dev, 'feature/**', 'fix/**', 'feat/**' ]
+    branches: [master, main, develop, dev, 'feature/**', 'fix/**', 'feat/**']
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
 
 env:
-  # ============================================================
-  # 全局环境变量 —— 与 application.yml 中 ${VAR:default} 的 VAR 一致
-  # 设为空字符串会使 Spring 使用 application.yml 中的默认值
-  # 设为实际值会覆盖默认值
-  # ============================================================
-
-  # MySQL —— 与 service 容器配置对应
   DB_USERNAME: root
   DB_PASSWORD: qwer1234
-
-  # Redis —— CI 中不设密码，覆盖默认的 root/qwer1234
   REDIS_HOST: localhost
   REDIS_PORT: '6379'
   REDIS_USERNAME: ''
   REDIS_PASSWORD: ''
-
-  # Milvus —— service 容器在同一网络，用 localhost
   MILVUS_HOST: localhost
   MILVUS_PORT: '19530'
-
-  # OpenAI API —— 需要在 GitHub Settings > Secrets > Actions 中添加
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   OPENAI_BASE_URL: 'https://api.siliconflow.cn'
 
 jobs:
-  # ============================================================
-  # 单元测试：无需外部服务，快速反馈
-  # ============================================================
   unit-test:
     name: Unit Tests (Java 17)
     runs-on: ubuntu-latest
@@ -43,31 +27,20 @@ jobs:
       SPRING_PROFILES_ACTIVE: test
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-
-      - name: Run tests in all modules
+      - name: Run unit tests
         run: mvn test --batch-mode --no-transfer-progress -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false
 
-  # ============================================================
-  # 集成/Eval 测试：需要 MySQL / Redis / Milvus
-  # ============================================================
   integration-test:
     name: Integration Tests (with services)
     runs-on: ubuntu-latest
 
     services:
-      # ----------------------------------------------------------
-      # MySQL 8.0
-      # 对应配置: spring.datasource → root / qwer1234 / code_review_agent
-      # ----------------------------------------------------------
       mysql:
         image: mysql:8.0
         env:
@@ -75,75 +48,50 @@ jobs:
           MYSQL_DATABASE: code_review_agent
         ports:
           - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=10
 
-      # ----------------------------------------------------------
-      # Redis 7 —— 无密码（与 CI env REDIS_PASSWORD='' 对应）
-      # ----------------------------------------------------------
       redis:
         image: redis:7-alpine
         ports:
           - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
 
-      # ----------------------------------------------------------
-      # Milvus standalone（内置 etcd + MinIO）
-      # 对应配置: spring.ai.vectorstore.milvus.client → localhost:19530
-      # ----------------------------------------------------------
       milvus:
         image: milvusdb/milvus:v2.5.0
         command: ["milvus", "run", "standalone"]
         ports:
           - 19530:19530
           - 9091:9091
-        options: >-
-          --health-cmd "curl -sf http://localhost:9091/healthz"
-          --health-interval 30s
-          --health-timeout 20s
-          --health-retries 10
-          --health-start-period 90s
+        options: --health-cmd="curl -sf http://localhost:9091/healthz" --health-interval=30s --health-timeout=20s --health-retries=10 --health-start-period=90s
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-
-      - name: Wait for services to be ready
+      - name: Wait for services
         run: |
-          echo "→ 等待 MySQL..."
+          echo "Waiting for MySQL..."
           for i in $(seq 1 20); do
             mysqladmin ping -h 127.0.0.1 -u root -pqwer1234 --silent 2>/dev/null && break
             sleep 3
           done
-          echo "→ 等待 Redis..."
+          echo "Waiting for Redis..."
           for i in $(seq 1 10); do
             redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG && break
             sleep 2
           done
-          echo "→ 等待 Milvus..."
+          echo "Waiting for Milvus..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:9091/healthz > /dev/null 2>&1; then
               echo "Milvus is ready!"
               exit 0
             fi
-            echo "  attempt $i/30, waiting..."
+            echo "  attempt $i/30..."
             sleep 10
           done
-          echo "Milvus 启动超时" && exit 1
-
-      - name: Run evaluation test suite
+          echo "Milvus startup timed out" && exit 1
+      - name: Run evaluation tests
         run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -DfailIfNoTests=false
