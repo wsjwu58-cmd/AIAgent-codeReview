@@ -1,0 +1,29 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.ai.autoconfigure.vectorstore.milvus.MilvusVectorStoreAutoConfiguration
+      - org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
+      - org.springframework.ai.autoconfigure.openai.OpenAiEmbeddingAutoConfiguration
+  main:
+    allow-circular-references: true
+
+milvus:
+  enabled: false
+
+code-review:
+  ai:
+    enabled: false
+  rag:
+    hybrid:
+      enabled: false
+    rerank:
+      enabled: false
+  web-search:
+    enabled: false
+
+logging:
+  level:
+    root: warn
+    com.heima.codereview: info

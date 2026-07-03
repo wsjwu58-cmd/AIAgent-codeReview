@@ -11,6 +11,9 @@ jobs:
     name: Build & Test (Java 17)
     runs-on: ubuntu-latest
 
+    env:
+      SPRING_PROFILES_ACTIVE: test
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,5 +25,5 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run all tests
-        run: mvn test --batch-mode --no-transfer-progress
+      - name: Run tests (skip AgentEvaluationSuiteTest, needs live Milvus)
+        run: mvn test --batch-mode --no-transfer-progress -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false

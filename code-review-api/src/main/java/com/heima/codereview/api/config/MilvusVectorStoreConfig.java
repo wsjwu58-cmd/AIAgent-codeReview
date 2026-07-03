@@ -17,12 +17,14 @@ import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.milvus.MilvusVectorStore;
 import org.springframework.ai.vectorstore.milvus.autoconfigure.MilvusVectorStoreProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.util.StringUtils;
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "milvus.enabled", havingValue = "true", matchIfMissing = true)
 public class MilvusVectorStoreConfig {
 
     private static final Logger log = LoggerFactory.getLogger(MilvusVectorStoreConfig.class);
