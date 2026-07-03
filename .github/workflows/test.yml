@@ -7,8 +7,11 @@ on:
     branches: [ master, main ]
 
 jobs:
-  test:
-    name: Build & Test (Java 17)
+  # ============================================================
+  # 单元测试：无需外部服务，快速反馈
+  # ============================================================
+  unit-test:
+    name: Unit Tests (Java 17)
     runs-on: ubuntu-latest
 
     env:
@@ -25,5 +28,90 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run tests (skip AgentEvaluationSuiteTest, needs live Milvus)
-        run: mvn test --batch-mode --no-transfer-progress -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false
+      - name: Run unit tests (skip eval suite)
+        run: mvn test --batch-mode --no-transfer-progress -pl '!code-review-start' -DfailIfNoTests=false
+
+      - name: Run start module smoke tests (skip eval)
+        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false
+
+  # ============================================================
+  # 集成/Eval 测试：需要 MySQL / Redis / Milvus
+  # ============================================================
+  integration-test:
+    name: Integration Tests (with services)
+    runs-on: ubuntu-latest
+
+    env:
+      MILVUS_HOST: localhost
+      MILVUS_PORT: '19530'
+      REDIS_USERNAME: ''
+      REDIS_PASSWORD: ''
+      DB_USERNAME: root
+      DB_PASSWORD: qwer1234
+      # OpenAI API key — 请将此 secret 添加到仓库 Settings > Secrets and variables > Actions
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: qwer1234
+          MYSQL_DATABASE: code_review_agent
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Milvus standalone 内置了 etcd + MinIO，单个容器即可
+      milvus:
+        image: milvusdb/milvus:v2.4.0
+        command: ["milvus", "run", "standalone"]
+        ports:
+          - 19530:19530
+          - 9091:9091
+        options: >-
+          --health-cmd "curl -sf http://localhost:9091/healthz"
+          --health-interval 30s
+          --health-timeout 20s
+          --health-retries 10
+          --health-start-period 90s
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Wait for Milvus to be ready
+        run: |
+          echo "等待 Milvus 启动..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9091/healthz > /dev/null 2>&1; then
+              echo "Milvus is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/30, waiting..."
+            sleep 10
+          done
+          echo "Milvus 启动超时" && exit 1
+
+      - name: Run evaluation test suite
+        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -DfailIfNoTests=false
