@@ -6,6 +6,31 @@ on:
   pull_request:
     branches: [ master, main ]
 
+env:
+  # ============================================================
+  # 全局环境变量 —— 与 application.yml 中 ${VAR:default} 的 VAR 一致
+  # 设为空字符串会使 Spring 使用 application.yml 中的默认值
+  # 设为实际值会覆盖默认值
+  # ============================================================
+
+  # MySQL —— 与 service 容器配置对应
+  DB_USERNAME: root
+  DB_PASSWORD: qwer1234
+
+  # Redis —— CI 中不设密码，覆盖默认的 root/qwer1234
+  REDIS_HOST: localhost
+  REDIS_PORT: '6379'
+  REDIS_USERNAME: ''
+  REDIS_PASSWORD: ''
+
+  # Milvus —— service 容器在同一网络，用 localhost
+  MILVUS_HOST: localhost
+  MILVUS_PORT: '19530'
+
+  # OpenAI API —— 需要在 GitHub Settings > Secrets > Actions 中添加
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  OPENAI_BASE_URL: 'https://api.siliconflow.cn'
+
 jobs:
   # ============================================================
   # 单元测试：无需外部服务，快速反馈
@@ -28,11 +53,8 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run unit tests (skip eval suite)
-        run: mvn test --batch-mode --no-transfer-progress -pl '!code-review-start' -DfailIfNoTests=false
-
-      - name: Run start module smoke tests (skip eval)
-        run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false
+      - name: Run tests in all modules
+        run: mvn test --batch-mode --no-transfer-progress -Dtest='!AgentEvaluationSuiteTest' -DfailIfNoTests=false
 
   # ============================================================
   # 集成/Eval 测试：需要 MySQL / Redis / Milvus
@@ -41,17 +63,11 @@ jobs:
     name: Integration Tests (with services)
     runs-on: ubuntu-latest
 
-    env:
-      MILVUS_HOST: localhost
-      MILVUS_PORT: '19530'
-      REDIS_USERNAME: ''
-      REDIS_PASSWORD: ''
-      DB_USERNAME: root
-      DB_PASSWORD: qwer1234
-      # OpenAI API key — 请将此 secret 添加到仓库 Settings > Secrets and variables > Actions
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
     services:
+      # ----------------------------------------------------------
+      # MySQL 8.0
+      # 对应配置: spring.datasource → root / qwer1234 / code_review_agent
+      # ----------------------------------------------------------
       mysql:
         image: mysql:8.0
         env:
@@ -65,6 +81,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # ----------------------------------------------------------
+      # Redis 7 —— 无密码（与 CI env REDIS_PASSWORD='' 对应）
+      # ----------------------------------------------------------
       redis:
         image: redis:7-alpine
         ports:
@@ -75,9 +94,12 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      # Milvus standalone 内置了 etcd + MinIO，单个容器即可
+      # ----------------------------------------------------------
+      # Milvus standalone（内置 etcd + MinIO）
+      # 对应配置: spring.ai.vectorstore.milvus.client → localhost:19530
+      # ----------------------------------------------------------
       milvus:
-        image: milvusdb/milvus:v2.4.0
+        image: milvusdb/milvus:v2.5.0
         command: ["milvus", "run", "standalone"]
         ports:
           - 19530:19530
@@ -100,9 +122,19 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Wait for Milvus to be ready
+      - name: Wait for services to be ready
         run: |
-          echo "等待 Milvus 启动..."
+          echo "→ 等待 MySQL..."
+          for i in $(seq 1 20); do
+            mysqladmin ping -h 127.0.0.1 -u root -pqwer1234 --silent 2>/dev/null && break
+            sleep 3
+          done
+          echo "→ 等待 Redis..."
+          for i in $(seq 1 10); do
+            redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG && break
+            sleep 2
+          done
+          echo "→ 等待 Milvus..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:9091/healthz > /dev/null 2>&1; then
               echo "Milvus is ready!"
