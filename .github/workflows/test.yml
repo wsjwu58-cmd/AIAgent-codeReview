@@ -58,15 +58,6 @@ jobs:
           - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
 
-      milvus:
-        image: milvusdb/milvus:v2.3.4
-        env:
-          COMMON_STORAGETYPE: local
-        ports:
-          - 19530:19530
-          - 9091:9091
-        options: --health-cmd="curl -sf http://localhost:9091/healthz" --health-interval=30s --health-timeout=20s --health-retries=10 --health-start-period=120s
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -74,31 +65,53 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Start Milvus standalone
+        run: |
+          docker run -d --name milvus-standalone \
+            --memory 4g \
+            -p 19530:19530 \
+            -p 9091:9091 \
+            milvusdb/milvus:v2.3.4 \
+            milvus run standalone
+
       - name: Wait for MySQL and Redis
         run: |
           echo "Waiting for MySQL..."
-          for i in $(seq 1 20); do
-            mysqladmin ping -h 127.0.0.1 -u root -pqwer1234 --silent 2>/dev/null && break
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -u root -pqwer1234 --silent 2>/dev/null; then
+              echo "MySQL ready (attempt $i)"
+              break
+            fi
             sleep 3
           done
           echo "Waiting for Redis..."
           for i in $(seq 1 10); do
-            redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG && break
+            if redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG; then
+              echo "Redis ready (attempt $i)"
+              break
+            fi
             sleep 2
           done
+
       - name: Wait for Milvus
         timeout-minutes: 5
         run: |
           for i in $(seq 1 30); do
             if curl -sf http://localhost:9091/healthz 2>/dev/null; then
-              echo "Milvus is ready!"
+              echo "Milvus ready (attempt $i)"
               exit 0
             fi
-            echo "Milvus attempt $i/30, waiting..."
+            echo "Milvus starting... attempt $i/30"
             sleep 10
           done
-          echo "=== Milvus logs ==="
-          docker logs $(docker ps -q --filter ancestor=milvusdb/milvus:v2.3.4) 2>/dev/null || true
-          echo "Milvus startup timed out" && exit 1
-      - name: Run evaluation tests
+          echo "=== Milvus container logs ==="
+          docker logs milvus-standalone 2>&1 | tail -50 || true
+          echo "Milvus startup timed out"
+          exit 1
+
+      - name: Build all modules (install to local repo)
+        run: mvn install --batch-mode --no-transfer-progress -DskipTests
+
+      - name: Run evaluation test suite
         run: mvn test --batch-mode --no-transfer-progress -pl code-review-start -Dtest='AgentEvaluationSuiteTest' -Dspring.profiles.active=eval -Dsurefire.failIfNoSpecifiedTests=false
