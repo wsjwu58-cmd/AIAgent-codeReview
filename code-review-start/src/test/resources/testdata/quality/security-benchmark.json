@@ -1,0 +1,82 @@
+[
+  {
+    "id": "SEC-BENCH-001",
+    "cweId": "CWE-89",
+    "fileName": "LoginService.java",
+    "code": "String query = \"SELECT * FROM users WHERE username='\" + username + \"' AND password='\" + password + \"'\";\nStatement stmt = conn.createStatement();\nResultSet rs = stmt.executeQuery(query);",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "SQL 注入漏洞：用户输入直接拼接到 SQL 语句中"
+  },
+  {
+    "id": "SEC-BENCH-002",
+    "cweId": "CWE-79",
+    "fileName": "CommentController.java",
+    "code": "@GetMapping(\"/comment\")\npublic String addComment(@RequestParam String text) {\n    return \"<div class='comment'>\" + text + \"</div>\";\n}",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "XSS 漏洞：用户输入未转义直接返回到 HTML"
+  },
+  {
+    "id": "SEC-BENCH-003",
+    "cweId": "CWE-798",
+    "fileName": "DatabaseConfig.java",
+    "code": "public class DatabaseConfig {\n    private static final String PASSWORD = \"admin123\";\n    private static final String API_KEY = \"sk-abc123def456\";\n}",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "硬编码凭据：密码和 API Key 硬编码在代码中"
+  },
+  {
+    "id": "SEC-BENCH-004",
+    "cweId": "CWE-22",
+    "fileName": "FileController.java",
+    "code": "@GetMapping(\"/download\")\npublic void download(@RequestParam String filename, HttpServletResponse resp) {\n    File file = new File(\"/uploads/\" + filename);\n    Files.copy(file.toPath(), resp.getOutputStream());\n}",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "路径遍历漏洞：filename 参数未校验，可访问任意文件"
+  },
+  {
+    "id": "SEC-BENCH-005",
+    "cweId": "CWE-89",
+    "fileName": "SafeUserService.java",
+    "code": "String query = \"SELECT * FROM users WHERE username = ?\";\nPreparedStatement pstmt = conn.prepareStatement(query);\npstmt.setString(1, username);\nResultSet rs = pstmt.executeQuery();",
+    "hasVulnerability": false,
+    "vulnerabilityDescription": "正确使用 PreparedStatement 防止 SQL 注入"
+  },
+  {
+    "id": "SEC-BENCH-006",
+    "cweId": "CWE-79",
+    "fileName": "SafeRenderer.java",
+    "code": "public String renderComment(String text) {\n    return HtmlUtils.htmlEscape(text);\n}",
+    "hasVulnerability": false,
+    "vulnerabilityDescription": "正确使用 HTML 转义防止 XSS"
+  },
+  {
+    "id": "SEC-BENCH-007",
+    "cweId": "CWE-522",
+    "fileName": "AuthService.java",
+    "code": "log.info(\"User login: username={}, password={}\", username, password);",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "敏感信息泄露：日志中记录了密码明文"
+  },
+  {
+    "id": "SEC-BENCH-008",
+    "cweId": "CWE-200",
+    "fileName": "ErrorHandler.java",
+    "code": "try {\n    // ...\n} catch (Exception e) {\n    response.getWriter().write(e.getMessage());\n    e.printStackTrace();\n}",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "信息泄露：异常信息直接返回给客户端"
+  },
+  {
+    "id": "SEC-BENCH-009",
+    "cweId": "CWE-502",
+    "fileName": "ConfigLoader.java",
+    "code": "ObjectInputStream ois = new ObjectInputStream(new FileInputStream(\"config.dat\"));\nObject config = ois.readObject();",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "不安全反序列化：未验证 ObjectInputStream 数据来源"
+  },
+  {
+    "id": "SEC-BENCH-010",
+    "cweId": "CWE-327",
+    "fileName": "PasswordHasher.java",
+    "code": "MessageDigest md = MessageDigest.getInstance(\"MD5\");\nbyte[] hash = md.digest(password.getBytes());",
+    "hasVulnerability": true,
+    "vulnerabilityDescription": "弱加密算法：使用不安全的 MD5 哈希密码"
+  }
+]

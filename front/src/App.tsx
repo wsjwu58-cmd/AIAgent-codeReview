@@ -115,9 +115,9 @@ export function App() {
     return (
       <ConfigProvider
         theme={{
-          algorithm: theme.darkAlgorithm,
-          token: { colorPrimary: '#06b6d4', borderRadius: 8, fontFamily: '"Noto Sans SC", sans-serif' },
-        }}
+        algorithm: theme.darkAlgorithm,
+        token: { colorPrimary: '#06b6d4', borderRadius: 10, fontFamily: '"Noto Sans SC", sans-serif' },
+      }}
       >
         <div className="page-shell">
           <LoginPage onAuthed={(newToken, newUsername) => {
@@ -137,15 +137,15 @@ export function App() {
         algorithm: theme.darkAlgorithm,
         token: {
           colorPrimary: '#06b6d4',
-          borderRadius: 8,
+          borderRadius: 10,
           fontFamily: '"Noto Sans SC", sans-serif',
         },
         components: {
-          Layout: { siderBg: '#0d1424', bodyBg: '#060b14' },
+          Layout: { siderBg: '#0d1424', bodyBg: '#0b1120' },
         },
       }}
     >
-      <Layout className="page-shell" style={{ display: 'flex', flexDirection: 'row', minHeight: '100vh', padding: 0, background: '#060b14' }}>
+      <Layout className="page-shell" style={{ display: 'flex', flexDirection: 'row', minHeight: '100vh', padding: 0, background: 'var(--bg-void)' }}>
 
         {/* ====== SIDEBAR ====== */}
         <Layout.Sider
@@ -154,8 +154,8 @@ export function App() {
             position: 'fixed',
             height: '100vh',
             left: 0, top: 0, bottom: 0,
-            background: '#0d1424',
-            borderRight: '1px solid rgba(148,163,184,0.06)',
+            background: 'var(--bg-primary)',
+            borderRight: '1px solid var(--border-default)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 100,
@@ -171,7 +171,7 @@ export function App() {
           {/* Logo area */}
           <div style={{
             padding: '24px 20px 20px',
-            borderBottom: '1px solid rgba(148,163,184,0.06)',
+            borderBottom: '1px solid var(--border-default)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
@@ -209,7 +209,7 @@ export function App() {
           <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
             <div style={{ marginBottom: 8 }}>
               <div style={{ padding: '0 12px', marginBottom: 6 }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   导航
                 </span>
               </div>
@@ -234,7 +234,7 @@ export function App() {
                         background: isActive
                           ? 'linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(124,58,237,0.12) 100%)'
                           : isHovered ? 'rgba(148,163,184,0.05)' : 'transparent',
-                        color: isActive ? '#67e8f9' : isHovered ? '#e2e8f0' : '#64748b',
+                        color: isActive ? '#67e8f9' : isHovered ? 'var(--text-primary)' : 'var(--text-muted)',
                         width: '100%', textAlign: 'left',
                         transform: isHovered && !isActive ? 'translateX(2px)' : 'none',
                       }}
@@ -254,7 +254,7 @@ export function App() {
                         <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500, display: 'block', fontFamily: '"Syne", sans-serif' }}>
                           {item.label}
                         </span>
-                        <span style={{ fontSize: '10.5px', color: isActive ? 'rgba(103,232,249,0.7)' : '#4a5568', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '10.5px', color: isActive ? 'rgba(103,232,249,0.7)' : 'var(--text-muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.desc}
                         </span>
                       </div>
@@ -268,14 +268,8 @@ export function App() {
             </div>
 
             {/* Stats mini panel */}
-            <div style={{
-              margin: '20px 4px 0',
-              padding: '14px',
-              background: 'rgba(6,182,212,0.04)',
-              border: '1px solid rgba(6,182,212,0.1)',
-              borderRadius: 12,
-            }}>
-              <div style={{ fontSize: '10px', color: '#4a5568', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            <div className="glass-panel" style={{ margin: '20px 4px 0', padding: '14px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                 本次会话
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -292,7 +286,7 @@ export function App() {
                     <div style={{ fontSize: '18px', fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#06b6d4', lineHeight: 1 }}>
                       {stat.value}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#4a5568', marginTop: 2 }}>{stat.label}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: 2 }}>{stat.label}</div>
                   </div>
                 ))}
               </div>
@@ -300,12 +294,9 @@ export function App() {
           </nav>
 
           {/* User footer */}
-          <div style={{ padding: '16px', borderTop: '1px solid rgba(148,163,184,0.06)' }}>
-            <div style={{
+          <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
+            <div className="glass-panel" style={{
               padding: '10px 12px',
-              background: 'rgba(6,182,212,0.05)',
-              border: '1px solid rgba(6,182,212,0.1)',
-              borderRadius: 10,
               marginBottom: 10,
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
@@ -345,10 +336,10 @@ export function App() {
         </Layout.Sider>
 
         {/* ====== MAIN CONTENT ====== */}
-        <Layout style={{ marginLeft: 260, flex: 1, background: '#060b14', minHeight: '100vh' }}>
+        <Layout style={{ marginLeft: 260, flex: 1, background: 'var(--bg-void)', minHeight: '100vh' }}>
           <div style={{
             minHeight: '100vh',
-            background: 'radial-gradient(ellipse 100% 40% at 50% -10%, rgba(6,182,212,0.04) 0%, transparent 60%)',
+            background: 'radial-gradient(ellipse 100% 40% at 50% -10%, rgba(6,182,212,0.03) 0%, transparent 60%)',
           }}>
             <ContentPanel
               activeTab={activeTab}

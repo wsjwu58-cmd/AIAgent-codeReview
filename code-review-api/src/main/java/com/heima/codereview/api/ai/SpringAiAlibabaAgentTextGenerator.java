@@ -1,6 +1,7 @@
 package com.heima.codereview.api.ai;
 
 import com.heima.codereview.core.agent.AgentTextGenerator;
+import com.heima.codereview.common.monitoring.MetricsCollector;
 import com.heima.codereview.tools.mcp.McpToolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,10 +13,12 @@ import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @Component
 @Primary
@@ -66,13 +69,18 @@ public class SpringAiAlibabaAgentTextGenerator implements AgentTextGenerator {
                 log.warn("AI dialog returned empty content. agentName={}, costMs={}", agentName, System.currentTimeMillis() - start);
                 return "";
             }
+            long costMs = System.currentTimeMillis() - start;
             log.info("AI dialog finished. agentName={}, costMs={}, outputLength={}, outputPreview={}",
-                    agentName, System.currentTimeMillis() - start, output.length(), preview(output));
+                    agentName, costMs, output.length(), preview(output));
             log.info("AI dialog output. agentName={}, output={}", agentName, outputForLog(output));
+            MetricsCollector.instance().recordLatency(agentName, sceneFromContext(safeContext),
+                    output, costMs, safeLen(instruction) + safeLen(input), output.length());
             return output;
         } catch (Exception e) {
+            long costMs = System.currentTimeMillis() - start;
             log.error("AI dialog failed. agentName={}, costMs={}, reason={}",
-                    agentName, System.currentTimeMillis() - start, e.getMessage(), e);
+                    agentName, costMs, e.getMessage(), e);
+            MetricsCollector.instance().recordError(agentName, e.getMessage());
             return "";
         }
     }
@@ -82,8 +90,83 @@ public class SpringAiAlibabaAgentTextGenerator implements AgentTextGenerator {
         return chatModelProvider.getIfAvailable() != null;
     }
 
+    @Override
+    public String generate(String agentName,
+                           String instruction,
+                           String input,
+                           Map<String, Object> context,
+                           Consumer<String> chunkHandler) {
+        if (chunkHandler == null) {
+            return generate(agentName, instruction, input, context);
+        }
+        long start = System.currentTimeMillis();
+        Map<String, Object> safeContext = context == null ? Map.of() : context;
+        boolean disableToolCallbacks = isToolCallbackDisabled(safeContext);
+        ChatModel chatModel = chatModelProvider.getIfAvailable();
+        if (chatModel == null) {
+            log.warn("AI stream dialog degraded because no ChatModel is available. agentName={}, inputLength={}, inputPreview={}",
+                    agentName, safeLength(input), preview(input));
+            return "";
+        }
+
+        log.info("AI stream dialog started. agentName={}, instructionLength={}, inputLength={}, inputPreview={}",
+                agentName, safeLength(instruction), safeLength(input), preview(input));
+        try {
+            String systemPrompt = "Current agent: " + agentName + "\n" + defaultString(instruction)
+                    + (disableToolCallbacks
+                    ? "\nTool callbacks are disabled for this request. Reason only with the provided context."
+                    : "\nIf the task needs external context, history, or repository code, proactively call the available tools.")
+                    + "\nAlways answer in Simplified Chinese unless the instruction explicitly requires another language.";
+            StringBuilder accumulator = new StringBuilder();
+            Flux<String> streamFlux = ChatClient.create(chatModel)
+                    .prompt()
+                    .system(systemPrompt)
+                    .user(input)
+                    .toolCallbacks(disableToolCallbacks ? List.of() : buildToolCallbacks(safeContext))
+                    .toolContext(safeContext)
+                    .stream()
+                    .content();
+            streamFlux.doOnNext(chunk -> {
+                        if (chunk != null && !chunk.isEmpty()) {
+                            accumulator.append(chunk);
+                            chunkHandler.accept(chunk);
+                        }
+                    })
+                    .blockLast();
+            String output = accumulator.toString();
+            if (output.isBlank()) {
+                log.warn("AI stream dialog returned empty content. agentName={}, costMs={}", agentName, System.currentTimeMillis() - start);
+                return "";
+            }
+            long costMs = System.currentTimeMillis() - start;
+            log.info("AI stream dialog finished. agentName={}, costMs={}, outputLength={}, outputPreview={}",
+                    agentName, costMs, output.length(), preview(output));
+            MetricsCollector.instance().recordLatency(agentName, sceneFromContext(safeContext),
+                    output, costMs, safeLen(instruction) + safeLen(input), output.length());
+            return output;
+        } catch (Exception e) {
+            long costMs = System.currentTimeMillis() - start;
+            log.error("AI stream dialog failed. agentName={}, costMs={}, reason={}",
+                    agentName, costMs, e.getMessage(), e);
+            MetricsCollector.instance().recordError(agentName, e.getMessage());
+            return "";
+        }
+    }
+
     private static int safeLength(String text) {
         return text == null ? 0 : text.length();
+    }
+
+    private static int safeLen(String text) {
+        return safeLength(text);
+    }
+
+    private static String sceneFromContext(Map<String, Object> context) {
+        if (context == null) {
+            return "unknown";
+        }
+        Object scene = context.get("scene");
+        return scene != null ? String.valueOf(scene) : "chat";
     }
 
     private static String preview(String text) {
@@ -110,6 +193,10 @@ public class SpringAiAlibabaAgentTextGenerator implements AgentTextGenerator {
 
     private List<ToolCallback> buildToolCallbacks(Map<String, Object> context) {
         List<ToolCallback> callbacks = new ArrayList<>();
+        // 仓库审查场景下禁用所有本地相关工具回调：local_file_* 直读审查服务器磁盘，
+        // file_operation 把 repoUrl 当本地路径解析（FileOperationTool.resolveBasePath），
+        // 都不访问被审查的远程仓库，会污染审查依据。
+        boolean repositoryReview = hasNonBlankContext(context, "repoUrl");
         callbacks.add(FunctionToolCallback.builder("review_history_search", (ReviewHistoryToolRequest request, ToolContext toolContext) ->
                         mcpToolExecutor.execute("review_history_search", Map.of(
                                 "query", defaultString(request.query()),
@@ -153,56 +240,58 @@ public class SpringAiAlibabaAgentTextGenerator implements AgentTextGenerator {
                 .description("Generate refactoring output from code and suggestions.")
                 .inputType(CodeRefactorToolRequest.class)
                 .build());
-        callbacks.add(FunctionToolCallback.builder("file_operation", (FileOperationToolRequest request, ToolContext toolContext) ->
-                        mcpToolExecutor.execute("file_operation", Map.of(
-                                "repoUrl", firstNonBlank(request.repoUrl(), stringFromContext(toolContext, "repoUrl")),
-                                "path", defaultString(request.path()),
-                                "action", firstNonBlank(request.action(), "list"),
-                                "keyword", defaultString(request.keyword()),
-                                "limit", request.limit() == null ? 20 : request.limit()
-                        )))
-                .description("List or read local repository files.")
-                .inputType(FileOperationToolRequest.class)
-                .build());
-        callbacks.add(FunctionToolCallback.builder("local_file_list", (LocalFileListToolRequest request, ToolContext toolContext) ->
-                        mcpToolExecutor.execute("local_file_list", Map.of(
-                                "path", defaultString(request.path()),
-                                "filters", defaultStringList(request.filters())
-                        )))
-                .description("List files under an allowed local directory using optional glob filters.")
-                .inputType(LocalFileListToolRequest.class)
-                .build());
-        callbacks.add(FunctionToolCallback.builder("local_file_read", (LocalFileReadToolRequest request, ToolContext toolContext) ->
-                        mcpToolExecutor.execute("local_file_read", Map.of(
-                                "path", defaultString(request.path())
-                        )))
-                .description("Read a file from an allowed local directory.")
-                .inputType(LocalFileReadToolRequest.class)
-                .build());
-        callbacks.add(FunctionToolCallback.builder("local_file_write", (LocalFileWriteToolRequest request, ToolContext toolContext) ->
-                        mcpToolExecutor.execute("local_file_write", Map.of(
-                                "path", defaultString(request.path()),
-                                "content", defaultString(request.content())
-                        )))
-                .description("Write or overwrite a file in an allowed local directory.")
-                .inputType(LocalFileWriteToolRequest.class)
-                .build());
-        callbacks.add(FunctionToolCallback.builder("local_file_search", (LocalFileSearchToolRequest request, ToolContext toolContext) ->
-                        mcpToolExecutor.execute("local_file_search", Map.of(
-                                "path", defaultString(request.path()),
-                                "pattern", defaultString(request.pattern()),
-                                "filters", defaultStringList(request.filters())
-                        )))
-                .description("Search files in an allowed local directory by content pattern and optional glob filters.")
-                .inputType(LocalFileSearchToolRequest.class)
-                .build());
-        callbacks.add(FunctionToolCallback.builder("local_file_delete", (LocalFileDeleteToolRequest request, ToolContext toolContext) ->
-                        mcpToolExecutor.execute("local_file_delete", Map.of(
-                                "path", defaultString(request.path())
-                        )))
-                .description("Delete a file in an allowed local directory.")
-                .inputType(LocalFileDeleteToolRequest.class)
-                .build());
+        if (!repositoryReview) {
+            callbacks.add(FunctionToolCallback.builder("file_operation", (FileOperationToolRequest request, ToolContext toolContext) ->
+                            mcpToolExecutor.execute("file_operation", Map.of(
+                                    "repoUrl", firstNonBlank(request.repoUrl(), stringFromContext(toolContext, "repoUrl")),
+                                    "path", defaultString(request.path()),
+                                    "action", firstNonBlank(request.action(), "list"),
+                                    "keyword", defaultString(request.keyword()),
+                                    "limit", request.limit() == null ? 20 : request.limit()
+                            )))
+                    .description("List or read local repository files.")
+                    .inputType(FileOperationToolRequest.class)
+                    .build());
+            callbacks.add(FunctionToolCallback.builder("local_file_list", (LocalFileListToolRequest request, ToolContext toolContext) ->
+                            mcpToolExecutor.execute("local_file_list", Map.of(
+                                    "path", defaultString(request.path()),
+                                    "filters", defaultStringList(request.filters())
+                            )))
+                    .description("List files under an allowed local directory using optional glob filters.")
+                    .inputType(LocalFileListToolRequest.class)
+                    .build());
+            callbacks.add(FunctionToolCallback.builder("local_file_read", (LocalFileReadToolRequest request, ToolContext toolContext) ->
+                            mcpToolExecutor.execute("local_file_read", Map.of(
+                                    "path", defaultString(request.path())
+                            )))
+                    .description("Read a file from an allowed local directory.")
+                    .inputType(LocalFileReadToolRequest.class)
+                    .build());
+            callbacks.add(FunctionToolCallback.builder("local_file_write", (LocalFileWriteToolRequest request, ToolContext toolContext) ->
+                            mcpToolExecutor.execute("local_file_write", Map.of(
+                                    "path", defaultString(request.path()),
+                                    "content", defaultString(request.content())
+                            )))
+                    .description("Write or overwrite a file in an allowed local directory.")
+                    .inputType(LocalFileWriteToolRequest.class)
+                    .build());
+            callbacks.add(FunctionToolCallback.builder("local_file_search", (LocalFileSearchToolRequest request, ToolContext toolContext) ->
+                            mcpToolExecutor.execute("local_file_search", Map.of(
+                                    "path", defaultString(request.path()),
+                                    "pattern", defaultString(request.pattern()),
+                                    "filters", defaultStringList(request.filters())
+                            )))
+                    .description("Search files in an allowed local directory by content pattern and optional glob filters.")
+                    .inputType(LocalFileSearchToolRequest.class)
+                    .build());
+            callbacks.add(FunctionToolCallback.builder("local_file_delete", (LocalFileDeleteToolRequest request, ToolContext toolContext) ->
+                            mcpToolExecutor.execute("local_file_delete", Map.of(
+                                    "path", defaultString(request.path())
+                            )))
+                    .description("Delete a file in an allowed local directory.")
+                    .inputType(LocalFileDeleteToolRequest.class)
+                    .build());
+        }
         callbacks.add(FunctionToolCallback.builder("code_search", (CodeSearchToolRequest request, ToolContext toolContext) ->
                         mcpToolExecutor.execute("code_search", Map.of(
                                 "repoUrl", firstNonBlank(request.repoUrl(), stringFromContext(toolContext, "repoUrl")),
@@ -221,7 +310,7 @@ public class SpringAiAlibabaAgentTextGenerator implements AgentTextGenerator {
                 .description("Search external web resources when a provider is configured.")
                 .inputType(WebSearchToolRequest.class)
                 .build());
-        if (hasNonBlankContext(context, "repoUrl")) {
+        if (repositoryReview) {
             callbacks.add(FunctionToolCallback.builder("git_diff_fetch", (GitDiffToolRequest request, ToolContext toolContext) ->
                             mcpToolExecutor.execute("git_diff_fetch", Map.of(
                                     "repoUrl", firstNonBlank(request.repoUrl(), stringFromContext(toolContext, "repoUrl")),

@@ -17,16 +17,16 @@ spring:
   ai:
     openai:
       base-url: ${OPENAI_BASE_URL:https://api.siliconflow.cn}
-      api-key: ${OPENAI_API_KEY:sk-wotxcpcnxztkgrdqrzytqtmqxonxerxjuwgboptnplhrvbsi}
+      api-key: ${OPENAI_API_KEY:sk-ltfvosipfxpgsliwxefhqijlfkmfdvswmuwkjyqmtvtwtysm}
       chat:
         base-url: ${OPENAI_CHAT_BASE_URL:https://api.siliconflow.cn}
-        api-key: ${OPENAI_CHAT_API_KEY:${OPENAI_API_KEY:sk-wotxcpcnxztkgrdqrzytqtmqxonxerxjuwgboptnplhrvbsi}}
+        api-key: ${OPENAI_CHAT_API_KEY:${OPENAI_API_KEY:sk-ltfvosipfxpgsliwxefhqijlfkmfdvswmuwkjyqmtvtwtysm}}
         completions-path: ${OPENAI_CHAT_COMPLETIONS_PATH:/v1/chat/completions}
         options:
-          model: ${OPENAI_CHAT_MODEL:Qwen/Qwen3-Coder-30B-A3B-Instruct}
+          model: ${OPENAI_CHAT_MODEL:deepseek-ai/DeepSeek-V4-Flash}
       embedding:
         base-url: ${OPENAI_EMBEDDING_BASE_URL:https://api.siliconflow.cn}
-        api-key: ${OPENAI_EMBEDDING_API_KEY:${OPENAI_API_KEY:sk-wotxcpcnxztkgrdqrzytqtmqxonxerxjuwgboptnplhrvbsi}}
+        api-key: ${OPENAI_EMBEDDING_API_KEY:${OPENAI_API_KEY:sk-ltfvosipfxpgsliwxefhqijlfkmfdvswmuwkjyqmtvtwtysm}}
         embeddings-path: ${OPENAI_EMBEDDING_PATH:/v1/embeddings}
         options:
           model: ${OPENAI_EMBEDDING_MODEL:BAAI/bge-large-zh-v1.5}

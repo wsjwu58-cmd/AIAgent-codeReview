@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, Input, Popconfirm, Segmented, Space, Table, Tag, Typography, message } from 'antd'
+import { Database, Search, Trash2 } from 'lucide-react'
 import {
   batchDeleteKnowledgeRecords,
   deleteKnowledgeRecord,
@@ -82,16 +83,26 @@ export function KnowledgeManagePage({ currentProjectId }: Props) {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 24px' }}>
-      <div style={{ marginBottom: 20 }}>
-        <Typography.Title level={2} style={{ color: '#e2e8f0', marginBottom: 6 }}>
-          知识库管理
-        </Typography.Title>
-        <Typography.Paragraph style={{ color: '#64748b', marginBottom: 0 }}>
+      <div className="page-header">
+        <div className="page-header__row">
+          <div className="page-header__icon">
+            <Database size={20} color="#8b5cf6" />
+          </div>
+          <Typography.Title level={2} className="page-header__title">
+            知识库管理
+          </Typography.Title>
+        </div>
+        <Typography.Paragraph className="page-header__desc">
           统一查看并清理审查历史、PDF 规范和聊天记录。
         </Typography.Paragraph>
       </div>
 
-      <Card style={{ marginBottom: 18, background: 'rgba(13,20,36,0.75)', border: '1px solid rgba(148,163,184,0.08)' }}>
+      <Card style={{
+        marginBottom: 18,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-lg)',
+      }}>
         <Space direction="vertical" size={14} style={{ width: '100%' }}>
           <Segmented
             options={typeOptions as unknown as { label: string; value: string }[]}
@@ -104,6 +115,7 @@ export function KnowledgeManagePage({ currentProjectId }: Props) {
               onChange={(event) => setKeyword(event.target.value)}
               placeholder="搜索 ID、项目、摘要或文件名"
               onPressEnter={() => void load(1, pageSize)}
+              prefix={<Search size={14} color="var(--text-muted)" />}
             />
             <Button type="primary" onClick={() => void load(1, pageSize)}>搜索</Button>
             <Button onClick={() => void load(page, pageSize)}>刷新</Button>
@@ -114,16 +126,22 @@ export function KnowledgeManagePage({ currentProjectId }: Props) {
               onConfirm={() => void onDeleteSelected()}
               disabled={selectedRows.length === 0}
             >
-              <Button danger disabled={selectedRows.length === 0}>删除选中</Button>
+              <Button danger disabled={selectedRows.length === 0} icon={<Trash2 size={14} />}>
+                删除选中
+              </Button>
             </Popconfirm>
-            <Typography.Text style={{ color: '#94a3b8' }}>
+            <Typography.Text style={{ color: 'var(--text-secondary)' }}>
               已选择 {selectedRows.length} 项
             </Typography.Text>
           </Space>
         </Space>
       </Card>
 
-      <Card style={{ background: 'rgba(13,20,36,0.75)', border: '1px solid rgba(148,163,184,0.08)' }}>
+      <Card style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-lg)',
+      }}>
         <Table<KnowledgeManageRecord>
           rowKey={(record) => `${record.type}-${record.id}`}
           loading={loading}
@@ -142,20 +160,39 @@ export function KnowledgeManagePage({ currentProjectId }: Props) {
               title: '类型',
               dataIndex: 'type',
               width: 120,
-              render: (value: KnowledgeRecordType) => <Tag color={value === 'REVIEW_HISTORY' ? 'purple' : value === 'PDF_NORM' ? 'gold' : 'blue'}>{value}</Tag>,
+              render: (value: KnowledgeRecordType) => (
+                <Tag style={{
+                  margin: 0,
+                  background: value === 'REVIEW_HISTORY' ? 'rgba(124,58,237,0.15)'
+                    : value === 'PDF_NORM' ? 'rgba(234,179,8,0.15)'
+                    : 'rgba(6,182,212,0.15)',
+                  color: value === 'REVIEW_HISTORY' ? '#c4b5fd'
+                    : value === 'PDF_NORM' ? '#fde047'
+                    : '#67e8f9',
+                  border: 'none',
+                  fontSize: '11px',
+                }}>
+                  {value}
+                </Tag>
+              ),
             },
             {
               title: 'ID',
               dataIndex: 'id',
               width: 220,
               ellipsis: true,
+              render: (value: string) => (
+                <Typography.Text style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+                  {value}
+                </Typography.Text>
+              ),
             },
             {
               title: '项目/会话',
               render: (_, record) => (
                 <Space direction="vertical" size={0}>
-                  <Typography.Text style={{ color: '#cbd5e1' }}>{record.projectId || '-'}</Typography.Text>
-                  <Typography.Text type="secondary">{record.sessionId || '-'}</Typography.Text>
+                  <Typography.Text style={{ color: 'var(--text-primary)' }}>{record.projectId || '-'}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 'var(--text-sm)' }}>{record.sessionId || '-'}</Typography.Text>
                 </Space>
               ),
             },
@@ -168,7 +205,11 @@ export function KnowledgeManagePage({ currentProjectId }: Props) {
               title: '时间',
               dataIndex: 'createdAt',
               width: 180,
-              render: (value: number) => new Date(value).toLocaleString(),
+              render: (value: number) => (
+                <Typography.Text style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                  {new Date(value).toLocaleString()}
+                </Typography.Text>
+              ),
             },
             {
               title: '操作',

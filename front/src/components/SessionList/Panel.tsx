@@ -27,9 +27,13 @@ export function SessionList({ sessions, currentSessionId, norms, onSelectSession
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '14px 0' }}>
 
       {/* Header */}
-      <div style={{ padding: '0 14px 14px', borderBottom: '1px solid rgba(148,163,184,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ padding: '0 14px 14px', borderBottom: '1px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{
+            fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
             <Layers size={11} /> 会话
           </span>
           <Button
@@ -57,7 +61,7 @@ export function SessionList({ sessions, currentSessionId, norms, onSelectSession
           <List
             size="small"
             dataSource={sessions}
-            locale={{ emptyText: <span style={{ color: '#4a5568', fontSize: '12px' }}>暂无会话</span> }}
+            locale={{ emptyText: <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>暂无会话</span> }}
             renderItem={(item) => {
               const active = item.sessionId === currentSessionId
               return (
@@ -65,13 +69,15 @@ export function SessionList({ sessions, currentSessionId, norms, onSelectSession
                   key={item.sessionId}
                   onClick={() => onSelectSession(item.sessionId)}
                   style={{
-                    padding: '9px 10px',
-                    borderRadius: 8,
+                    padding: '10px 12px',
+                    borderRadius: 10,
                     cursor: 'pointer',
-                    marginBottom: 3,
+                    marginBottom: 4,
                     border: 'none',
-                    background: active ? 'rgba(6,182,212,0.1)' : 'transparent',
-                    borderLeft: active ? '2px solid #06b6d4' : '2px solid transparent',
+                    background: active
+                      ? 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(124,58,237,0.08) 100%)'
+                      : 'transparent',
+                    boxShadow: active ? '0 0 0 1px rgba(6,182,212,0.2)' : 'none',
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
@@ -82,31 +88,47 @@ export function SessionList({ sessions, currentSessionId, norms, onSelectSession
                   }}
                 >
                   <div style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <MessageSquare size={11} color={active ? '#06b6d4' : '#4a5568'} />
-                      <span style={{ fontSize: '11.5px', fontFamily: '"JetBrains Mono", monospace', color: active ? '#67e8f9' : '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {item.latestMessagePreview ? stripMarkdown(item.latestMessagePreview).slice(0, 20) : `会话 ${item.sessionId?.slice(0, 8)}`}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                      <MessageSquare size={11} color={active ? '#06b6d4' : 'var(--text-muted)'} />
+                      <span style={{
+                        fontSize: '12px', fontFamily: '"JetBrains Mono", monospace',
+                        color: active ? '#67e8f9' : 'var(--text-secondary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                      }}>
+                        {item.latestMessagePreview ? stripMarkdown(item.latestMessagePreview).slice(0, 22) : `会话 ${item.sessionId?.slice(0, 8)}`}
                       </span>
                       {active && (
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#06b6d4', boxShadow: '0 0 8px #06b6d4', flexShrink: 0 }} />
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#4a5568', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 5 }}>
+                    <div style={{
+                      fontSize: '11px', color: 'var(--text-muted)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 6,
+                    }}>
                       {item.latestMessagePreview || '暂无消息'}
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       {item.language && (
-                        <Tag style={{ fontSize: '9.5px', padding: '0 6px', height: 16, lineHeight: '14px', background: 'rgba(124,58,237,0.1)', color: '#a78bfa', border: 'none', margin: 0 }}>
+                        <Tag style={{
+                          fontSize: '10px', padding: '0 6px', height: 18, lineHeight: '16px',
+                          background: 'rgba(124,58,237,0.12)', color: '#a78bfa', border: 'none', margin: 0,
+                        }}>
                           {item.language}
                         </Tag>
                       )}
                       {item.reviewCount !== undefined && item.reviewCount > 0 && (
-                        <Tag style={{ fontSize: '9.5px', padding: '0 6px', height: 16, lineHeight: '14px', background: 'rgba(6,182,212,0.1)', color: '#67e8f9', border: 'none', margin: 0 }}>
+                        <Tag style={{
+                          fontSize: '10px', padding: '0 6px', height: 18, lineHeight: '16px',
+                          background: 'rgba(6,182,212,0.12)', color: '#67e8f9', border: 'none', margin: 0,
+                        }}>
                           审 {item.reviewCount}
                         </Tag>
                       )}
                       {item.messageCount !== undefined && item.messageCount > 0 && (
-                        <Tag style={{ fontSize: '9.5px', padding: '0 6px', height: 16, lineHeight: '14px', background: 'rgba(148,163,184,0.06)', color: '#64748b', border: 'none', margin: 0 }}>
+                        <Tag style={{
+                          fontSize: '10px', padding: '0 6px', height: 18, lineHeight: '16px',
+                          background: 'rgba(148,163,184,0.08)', color: 'var(--text-secondary)', border: 'none', margin: 0,
+                        }}>
                           聊 {item.messageCount}
                         </Tag>
                       )}
@@ -118,21 +140,25 @@ export function SessionList({ sessions, currentSessionId, norms, onSelectSession
           />
         ) : (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <Empty description={<span style={{ color: '#4a5568', fontSize: '12px' }}>暂无会话记录</span>} />
+            <Empty description={<span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>暂无会话记录</span>} />
           </div>
         )}
       </div>
 
       {/* Norm files */}
       {norms.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(148,163,184,0.05)', padding: '12px 14px', flexShrink: 0 }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{ borderTop: '1px solid var(--border-default)', padding: '12px 14px', flexShrink: 0 }}>
+          <div style={{
+            fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8,
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
             <FileText size={10} /> 规范文档
           </div>
           <List
             size="small"
             dataSource={norms}
-            locale={{ emptyText: <span style={{ color: '#4a5568', fontSize: '11px' }}>暂无规范</span> }}
+            locale={{ emptyText: <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>暂无规范</span> }}
             renderItem={(item) => (
               <div style={{
                 padding: '6px 8px',
@@ -143,11 +169,17 @@ export function SessionList({ sessions, currentSessionId, norms, onSelectSession
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
                 <FileText size={11} color="#fde047" />
-                <span style={{ fontSize: '11.5px', color: '#94a3b8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{
+                  fontSize: '11.5px', color: 'var(--text-secondary)', flex: 1,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
                   {item.fileName}
                 </span>
                 {item.pageCount && (
-                  <Tag style={{ fontSize: '9.5px', padding: '0 5px', height: 15, lineHeight: '13px', background: 'rgba(234,179,8,0.12)', color: '#fde047', border: 'none', margin: 0 }}>
+                  <Tag style={{
+                    fontSize: '10px', padding: '0 5px', height: 17, lineHeight: '15px',
+                    background: 'rgba(234,179,8,0.12)', color: '#fde047', border: 'none', margin: 0,
+                  }}>
                     {item.pageCount}页
                   </Tag>
                 )}

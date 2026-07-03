@@ -31,6 +31,10 @@ public class SseEmitterManager {
         messageCounters.remove(sessionId);
     }
 
+    public boolean isRegistered(String sessionId) {
+        return emitters.containsKey(sessionId);
+    }
+
     public void send(String sessionId, String eventName, Object data) {
         SseEmitter emitter = emitters.get(sessionId);
         if (emitter == null) {

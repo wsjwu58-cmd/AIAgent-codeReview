@@ -1,6 +1,7 @@
 package com.heima.codereview.rag.embedding;
 
 import com.heima.codereview.rag.cache.EmbeddingCache;
+import com.heima.codereview.common.monitoring.MetricsCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -33,6 +34,7 @@ public class EmbeddingService {
         }
         List<Float> cached = embeddingCache.get(text);
         if (cached != null) {
+            MetricsCollector.instance().recordEmbeddingCacheHit(text);
             return cached;
         }
 
@@ -42,6 +44,7 @@ public class EmbeddingService {
             for (float v : vector) {
                 result.add(v);
             }
+            MetricsCollector.instance().recordEmbeddingGeneration(text, text.length());
             return embeddingCache.putAndGet(text, result);
         } catch (Exception e) {
             log.warn("Embedding 调用失败，改用本地兜底向量。原因={}", e.getMessage());

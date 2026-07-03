@@ -1,0 +1,26 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ master, main, develop, 'feature/**', 'fix/**', 'feat/**' ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    name: Build & Test (Java 17)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run all tests
+        run: mvn test --batch-mode --no-transfer-progress

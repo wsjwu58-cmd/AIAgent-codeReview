@@ -1,0 +1,94 @@
+[
+  {
+    "queryId": "RAG-001",
+    "query": "数据库密码加密规范",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-001": 0.95,
+      "chunk-003": 0.70
+    },
+    "expectedTopics": ["数据库", "密码", "加密", "安全"]
+  },
+  {
+    "queryId": "RAG-002",
+    "query": "SQL注入防范方法",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-002": 0.95,
+      "chunk-005": 0.80
+    },
+    "expectedTopics": ["SQL", "注入", "参数化", "PreparedStatement"]
+  },
+  {
+    "queryId": "RAG-003",
+    "query": "代码审查 checklist",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-004": 0.90
+    },
+    "expectedTopics": ["审查", "checklist", "规范"]
+  },
+  {
+    "queryId": "RAG-004",
+    "query": "日志记录规范",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-006": 0.85
+    },
+    "expectedTopics": ["日志", "SLF4J", "规范"]
+  },
+  {
+    "queryId": "RAG-005",
+    "query": "API接口参数校验要求",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-007": 0.90,
+      "chunk-008": 0.75
+    },
+    "expectedTopics": ["API", "参数校验", "validation"]
+  },
+  {
+    "queryId": "RAG-006",
+    "query": "Java 异常处理规范",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-009": 0.85
+    },
+    "expectedTopics": ["异常", "Exception", "BizException"]
+  },
+  {
+    "queryId": "RAG-007",
+    "query": "微服务接口设计规范",
+    "projectId": "demo-project",
+    "relevantChunkIds": {},
+    "expectedTopics": ["微服务", "接口", "REST"]
+  },
+  {
+    "queryId": "RAG-008",
+    "query": "敏感信息存储安全要求",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-001": 0.80,
+      "chunk-010": 0.70
+    },
+    "expectedTopics": ["敏感", "密钥", "加密", "存储"]
+  },
+  {
+    "queryId": "RAG-009",
+    "query": "事务管理规范",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-011": 0.90
+    },
+    "expectedTopics": ["事务", "Transactional", "回滚"]
+  },
+  {
+    "queryId": "RAG-010",
+    "query": "缓存使用规范 Redis",
+    "projectId": "demo-project",
+    "relevantChunkIds": {
+      "chunk-012": 0.85
+    },
+    "expectedTopics": ["缓存", "Redis", "Cache"]
+  }
+]

@@ -19,4 +19,10 @@ public interface ReactStreamListener {
 
     default void onError(String message, Throwable throwable) {
     }
+
+    /**
+     * LLM 流式生成的增量 chunk。agentId 标识产生内容的 agent，chunk 是本次推送的文本片段。
+     */
+    default void onAgentStream(String agentId, String chunk) {
+    }
 }

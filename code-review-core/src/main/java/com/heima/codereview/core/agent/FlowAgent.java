@@ -578,6 +578,14 @@ public class FlowAgent extends BaseAgent {
             }
 
             @Override
+            public void onAgentStream(String agentId, String chunk) {
+                listener.onEvent(sessionId, "agent_stream", Map.of(
+                        "agentId", safe(agentId),
+                        "content", safe(chunk)
+                ));
+            }
+
+            @Override
             public void onAgentComplete(SpecialistReport report) {
                 listener.onEvent(sessionId, "agent_complete", Map.of(
                         "agentId", safe(report.agentId()),

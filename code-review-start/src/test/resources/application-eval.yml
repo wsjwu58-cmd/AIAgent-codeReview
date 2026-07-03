@@ -1,0 +1,16 @@
+spring:
+  main:
+    allow-circular-references: true
+  ai:
+    judge:
+      api-key: ${JUDGE_API_KEY:${OPENAI_API_KEY:sk-ltfvosipfxpgsliwxefhqijlfkmfdvswmuwkjyqmtvtwtysm}}
+      base-url: ${JUDGE_BASE_URL:https://api.siliconflow.cn}
+      model: ${JUDGE_MODEL:deepseek-ai/DeepSeek-V3}
+      temperature: 0.1
+      max-tokens: 1024
+
+logging:
+  level:
+    root: warn
+    com.heima.codereview.start.eval: info
+    com.heima.codereview.core: info

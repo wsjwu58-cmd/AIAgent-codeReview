@@ -41,7 +41,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
                 fontFamily: '"Syne", sans-serif',
                 fontWeight: 800,
                 fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
-                background: 'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 40%, #64748b 100%)',
+                background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 40%, var(--text-muted) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -51,7 +51,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
             >
               欢迎回来，{username}
             </Typography.Title>
-            <Typography.Paragraph style={{ margin: '10px 0 0', color: '#64748b', fontSize: '0.95rem', maxWidth: 520 }}>
+            <Typography.Paragraph style={{ margin: '10px 0 0', color: 'var(--text-muted)', fontSize: 'var(--text-base)', maxWidth: 520 }}>
               基于多 Agent 协作的智能代码审查助手，支持深度分析、问题追踪与规范化审查。
             </Typography.Paragraph>
           </div>
@@ -64,9 +64,9 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
                 padding: '10px 18px',
                 background: action.gradient,
                 border: `1px solid ${action.border}`,
-                borderRadius: 10,
+                borderRadius: 'var(--radius-md)',
                 color: action.color,
-                fontSize: '13.5px',
+                fontSize: 'var(--text-base)',
                 fontWeight: 600,
                 fontFamily: '"Syne", sans-serif',
                 cursor: 'pointer',
@@ -93,9 +93,9 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
             >
               <Card
                 style={{
-                  background: 'rgba(13,20,36,0.8)',
+                  background: 'var(--bg-card)',
                   border: `1px solid ${stat.color}22`,
-                  borderRadius: 16,
+                  borderRadius: 'var(--radius-lg)',
                   overflow: 'hidden',
                   position: 'relative',
                   transition: 'all 0.25s ease',
@@ -116,7 +116,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
                 <div style={{ position: 'absolute', top: 0, right: 0, width: 100, height: 100, background: `radial-gradient(circle at top right, ${stat.glow}, transparent 70%)`, pointerEvents: 'none' }} />
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
                       {stat.label}
                     </div>
                     <div style={{ fontSize: '2rem', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, color: stat.color, lineHeight: 1, textShadow: `0 0 30px ${stat.glow}` }}>
@@ -145,7 +145,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
             padding: '16px 20px',
             background: 'linear-gradient(135deg, rgba(6,182,212,0.06) 0%, rgba(124,58,237,0.06) 100%)',
             border: '1px solid rgba(6,182,212,0.15)',
-            borderRadius: 14,
+            borderRadius: 'var(--radius-lg)',
             display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#06b6d4', fontSize: '13px', fontWeight: 600, fontFamily: '"Syne", sans-serif' }}>
@@ -155,7 +155,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
             {currentSessionId && <Tag color="blue" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '11px' }}>{currentSessionId}</Tag>}
             {currentReviewId && <Tag color="purple" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '11px' }}>{currentReviewId}</Tag>}
             {currentSession && (
-              <Typography.Text style={{ fontSize: '12px', color: '#4a5568', flex: 1 }}>
+              <Typography.Text style={{ fontSize: '12px', color: 'var(--text-muted)', flex: 1 }}>
                 {currentSession.latestMessagePreview || '暂无预览'}
               </Typography.Text>
             )}
@@ -168,15 +168,15 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Layers size={17} color="#7c3aed" />
-            <span style={{ fontFamily: '"Syne", sans-serif', fontWeight: 600, fontSize: '15px' }}>历史会话</span>
+            <span style={{ fontFamily: '"Syne", sans-serif', fontWeight: 600, fontSize: 'var(--text-lg)' }}>历史会话</span>
           </div>
         }
         style={{
-          background: 'rgba(13,20,36,0.6)',
-          border: '1px solid rgba(148,163,184,0.06)',
-          borderRadius: 16,
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
         }}
-        styles={{ header: { borderBottom: '1px solid rgba(148,163,184,0.05)', padding: '16px 20px' }, body: { padding: sessions.length ? '0' : undefined } }}
+        styles={{ header: { borderBottom: '1px solid var(--border-default)', padding: '16px 20px' }, body: { padding: sessions.length ? '0' : undefined } }}
         className="animate-in animate-in-5"
       >
         {sessions.length > 0 ? (
@@ -189,7 +189,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
                 <List.Item
                   style={{
                     padding: '18px 22px',
-                    borderBottom: '1px solid rgba(148,163,184,0.05)',
+                    borderBottom: '1px solid var(--border-default)',
                     transition: 'all 0.15s ease',
                     cursor: 'pointer',
                   }}
@@ -237,10 +237,10 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
                           </Tag>
                         ) : null}
                       </Space>
-                      <Typography.Paragraph style={{ marginBottom: 8, color: '#94a3b8', fontSize: '0.875rem' }}>
+                      <Typography.Paragraph style={{ marginBottom: 8, color: 'var(--text-secondary)', fontSize: 'var(--text-base)' }}>
                         {item.latestMessagePreview || '当前会话还没有可展示的消息摘要'}
                       </Typography.Paragraph>
-                      <div style={{ display: 'flex', gap: 16, fontSize: '11px', color: '#4a5568', fontFamily: '"JetBrains Mono", monospace' }}>
+                      <div style={{ display: 'flex', gap: 16, fontSize: '11px', color: 'var(--text-muted)', fontFamily: '"JetBrains Mono", monospace' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <Clock size={11} />
                           {item.lastActivity ? new Date(item.lastActivity).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '未知'}
@@ -256,7 +256,7 @@ export function DashboardPage({ username, currentSessionId, currentReviewId, ses
           />
         ) : (
           <div style={{ padding: '48px 0', textAlign: 'center' }}>
-            <Empty description={<span style={{ color: '#4a5568' }}>当前还没有历史会话</span>} />
+            <Empty description={<span style={{ color: 'var(--text-muted)' }}>当前还没有历史会话</span>} />
           </div>
         )}
       </Card>

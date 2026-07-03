@@ -55,9 +55,8 @@ public class SecuritySpecialistAgent extends SpecialistAgent {
                 "session_memory_read",
                 "chat_history_search",
                 "norm_search",
-                "local_file_list",
-                "local_file_read",
-                "local_file_search"
+                "code_search",
+                "web_search"
         );
     }
 

@@ -1,0 +1,132 @@
+[
+  {
+    "id": "TC-SEC-001",
+    "userQuery": "检查 com.example.auth.LoginService 中的安全漏洞",
+    "expectedIntent": "security-specialist",
+    "expectedTools": [
+      {
+        "toolName": "local_file_search",
+        "expectedParams": {"pattern": "LoginService"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["code_refactor"]
+  },
+  {
+    "id": "TC-SEC-002",
+    "userQuery": "这段 SQL 拼接代码有没有注入风险",
+    "expectedIntent": "security-specialist",
+    "expectedTools": [
+      {
+        "toolName": "code_search",
+        "expectedParams": {"query": "SQL"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete"]
+  },
+  {
+    "id": "TC-REFACTOR-001",
+    "userQuery": "重构 src/main/java/UserService.java 中的 getUserById 方法",
+    "expectedIntent": "review-specialist",
+    "expectedTools": [
+      {
+        "toolName": "local_file_read",
+        "expectedParams": {"path": "UserService.java"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete", "web_search"]
+  },
+  {
+    "id": "TC-REFACTOR-002",
+    "userQuery": "这段代码怎么优化性能",
+    "expectedIntent": "performance-specialist",
+    "expectedTools": [
+      {
+        "toolName": "code_search",
+        "expectedParams": {},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["norm_search"]
+  },
+  {
+    "id": "TC-RAG-001",
+    "userQuery": "根据项目规范，数据库密码应该怎么加密",
+    "expectedIntent": "rag-specialist",
+    "expectedTools": [
+      {
+        "toolName": "norm_search",
+        "expectedParams": {"query": "密码"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete", "local_file_write"]
+  },
+  {
+    "id": "TC-FILE-001",
+    "userQuery": "列出 src/main/java 目录下的文件",
+    "expectedIntent": "local-code-specialist",
+    "expectedTools": [
+      {
+        "toolName": "local_file_list",
+        "expectedParams": {"path": "src/main/java"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete", "local_file_write"]
+  },
+  {
+    "id": "TC-FILE-002",
+    "userQuery": "读取 src/main/java/AppConfig.java 的内容",
+    "expectedIntent": "local-code-specialist",
+    "expectedTools": [
+      {
+        "toolName": "local_file_read",
+        "expectedParams": {"path": "AppConfig.java"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete"]
+  },
+  {
+    "id": "TC-HISTORY-001",
+    "userQuery": "查看这个项目的历史审查记录",
+    "expectedIntent": "review-specialist",
+    "expectedTools": [
+      {
+        "toolName": "review_history_search",
+        "expectedParams": {},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete", "local_file_write"]
+  },
+  {
+    "id": "TC-GIT-001",
+    "userQuery": "审查最近的 git 变更",
+    "expectedIntent": "review-specialist",
+    "expectedTools": [
+      {
+        "toolName": "git_diff_fetch",
+        "expectedParams": {},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": []
+  },
+  {
+    "id": "TC-SEARCH-001",
+    "userQuery": "搜索代码中所有使用过时 API 的地方",
+    "expectedIntent": "architecture-specialist",
+    "expectedTools": [
+      {
+        "toolName": "code_search",
+        "expectedParams": {"query": "deprecated"},
+        "paramsAreSubset": true
+      }
+    ],
+    "forbiddenTools": ["local_file_delete"]
+  }
+]

@@ -22,8 +22,8 @@ export function ThinkingPanel({ steps, status, collapsed, onToggle }: Props) {
         onClick={onToggle}
         icon={<ChevronDown size={13} />}
         style={{
-          fontSize: '12px',
-          color: '#7c3aed',
+          fontSize: 'var(--text-sm)',
+          color: '#a78bfa',
           padding: '2px 6px',
           height: 'auto',
           display: 'flex',
@@ -41,8 +41,8 @@ export function ThinkingPanel({ steps, status, collapsed, onToggle }: Props) {
       className="thinking-panel"
       style={{
         background: 'linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(6,182,212,0.05) 100%)',
-        border: '1px solid rgba(124,58,237,0.2)',
-        borderRadius: 10,
+        border: '1px solid rgba(124, 58, 237, 0.2)',
+        borderRadius: 'var(--radius-md)',
         padding: 14,
         marginBottom: 10,
       }}
@@ -50,7 +50,7 @@ export function ThinkingPanel({ steps, status, collapsed, onToggle }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <Space size={8}>
           <Brain size={14} color="#7c3aed" />
-          <span style={{ fontFamily: '"Syne", sans-serif', fontWeight: 600, fontSize: '12px', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span style={{ fontFamily: '"Syne", sans-serif', fontWeight: 600, fontSize: 'var(--text-sm)', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             推理过程
           </span>
           <Tag style={{
@@ -71,7 +71,7 @@ export function ThinkingPanel({ steps, status, collapsed, onToggle }: Props) {
           size="small"
           onClick={onToggle}
           icon={<ChevronUp size={13} />}
-          style={{ fontSize: '12px', color: '#4a5568', padding: '2px 4px', height: 'auto' }}
+          style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: '2px 4px', height: 'auto' }}
         >
           收起
         </Button>
@@ -107,11 +107,11 @@ export function ThinkingPanel({ steps, status, collapsed, onToggle }: Props) {
                 }}>
                   {step.agentName || step.agentId}
                 </Tag>
-                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '9.5px', color: '#4a5568' }}>
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                   #{step.step}
                 </span>
                 {isTool && step.tool && (
-                  <Tag style={{ fontSize: '9px', padding: '0 5px', height: 14, background: 'rgba(6,182,212,0.08)', color: '#4dd0e1', border: 'none' }}>
+                  <Tag style={{ fontSize: 'var(--text-xs)', padding: '0 5px', height: 14, background: 'rgba(6,182,212,0.08)', color: '#4dd0e1', border: 'none' }}>
                     {step.tool}
                   </Tag>
                 )}
@@ -119,13 +119,13 @@ export function ThinkingPanel({ steps, status, collapsed, onToggle }: Props) {
               {isTool ? (
                 <div>
                   {step.output && (
-                    <Typography.Paragraph style={{ fontSize: '12px', color: '#64748b', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: '"JetBrains Mono", monospace' }}>
+                    <Typography.Paragraph style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: '"JetBrains Mono", monospace' }}>
                       {step.output}
                     </Typography.Paragraph>
                   )}
                 </div>
               ) : (
-                <Typography.Paragraph style={{ fontSize: '12.5px', color: '#94a3b8', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                <Typography.Paragraph style={{ fontSize: 'var(--text-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {step.content}
                 </Typography.Paragraph>
               )}

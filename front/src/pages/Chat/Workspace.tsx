@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Empty, Input, Space, Typography, message } from 'antd'
+import { Button, Empty, Input, Segmented, Space, Tag, Typography } from 'antd'
 import { ChatMessage } from '../../components/ChatMessage/MessageCard'
 import { FileUpload } from '../../components/FileUpload'
 import { FolderSelector } from '../../components/FolderSelector'
@@ -28,9 +28,13 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
   } = useConversationalChatClean({ sessionId, currentProjectId, onSessionChange, refreshSessions })
   const localCodeStream = useLocalCodeStream()
 
+  const currentSession = sessions.find((s) => s.sessionId === sessionId)
+  const projectName = currentProjectId || currentSession?.projectId || sessionId?.slice(0, 12) || '未命名项目'
+  const language = currentSession?.language || '未知语言'
+  const isAnalyzing = sending || localCodeStream.status === 'running'
+
   const startLocalCodeAnalysis = async (autoWrite: boolean) => {
     if (!folderPath.trim()) {
-      message.warning('请输入要分析的本地目录')
       return
     }
     try {
@@ -40,16 +44,89 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
         autoWrite,
       })
     } catch {
-      message.error('本地代码分析启动失败')
+      // handled by hook
     }
   }
+
+  const modeOptions = [
+    { value: 'chat', label: '对话工作台' },
+    { value: 'local-code', label: '本地代码审查' },
+  ]
+
+  const renderHeader = (mode: 'chat' | 'local-code') => (
+    <div className="project-bar" style={{ marginBottom: 16 }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: mode === 'chat'
+          ? 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(6,182,212,0.15))'
+          : 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(124,58,237,0.15))',
+        border: `1px solid ${mode === 'chat' ? 'rgba(124,58,237,0.2)' : 'rgba(6,182,212,0.2)'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {mode === 'chat' ? (
+          <MessageSquare size={18} color="#8b5cf6" />
+        ) : (
+          <FileCode2 size={18} color="#06b6d4" />
+        )}
+      </div>
+      <div>
+        <div className="project-bar__name">
+          {mode === 'chat' ? '对话工作台' : '本地代码审查'}
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 2 }}>
+          {mode === 'chat' ? (sessionId ? `会话 ${sessionId.slice(0, 16)}` : '新建会话') : '选择白名单目录并发起流式分析'}
+        </div>
+      </div>
+      <div className="project-bar__meta">
+        <Tag style={{ margin: 0, background: 'rgba(6,182,212,0.12)', color: '#67e8f9', border: 'none', fontSize: '11px' }}>
+          {language}
+        </Tag>
+      </div>
+      <div className="project-bar__status">
+        <span className={isAnalyzing ? 'project-bar__dot' : 'project-bar__dot project-bar__dot--idle'} />
+        {isAnalyzing ? '分析中' : '就绪'}
+      </div>
+      <Segmented
+        size="small"
+        value={activeMode}
+        options={modeOptions}
+        onChange={(value) => setActiveMode(value as 'chat' | 'local-code')}
+        style={{ flexShrink: 0 }}
+      />
+    </div>
+  )
+
+  const renderQuickTags = () => (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      {[
+        { label: '快速问答', icon: MessageSquare, color: '#06b6d4' },
+        { label: '深度分析', icon: Sparkles, color: '#7c3aed' },
+        { label: 'PDF 规范', icon: Zap, color: '#ec4899' },
+      ].map((tag) => (
+        <Tag key={tag.label} style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          background: `${tag.color}0a`,
+          border: `1px solid ${tag.color}22`,
+          color: tag.color,
+          fontSize: '11px',
+          fontWeight: 500,
+          borderRadius: 99,
+          margin: 0,
+        }}>
+          <tag.icon size={11} />
+          {tag.label}
+        </Tag>
+      ))}
+    </div>
+  )
 
   if (activeMode === 'local-code') {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '280px minmax(0, 1fr)', gap: 0, height: '100vh' }}>
         <aside style={{
-          borderRight: '1px solid rgba(148,163,184,0.06)',
-          background: '#0d1424',
+          borderRight: '1px solid var(--border-default)',
+          background: 'var(--bg-primary)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -63,47 +140,17 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
           />
         </aside>
 
-        <section style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#060b14' }}>
+        <section style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-void)' }}>
           <div style={{
             padding: '22px 28px 18px',
-            borderBottom: '1px solid rgba(148,163,184,0.06)',
-            background: 'linear-gradient(180deg, rgba(34,197,94,0.03) 0%, transparent 100%)',
+            borderBottom: '1px solid var(--border-default)',
+            background: 'linear-gradient(180deg, rgba(6,182,212,0.03) 0%, transparent 100%)',
             flexShrink: 0,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: 'linear-gradient(135deg, rgba(34,197,94,0.18), rgba(6,182,212,0.12))',
-                border: '1px solid rgba(34,197,94,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <FileCode2 size={18} color="#22c55e" />
-              </div>
-              <div>
-                <Typography.Title level={4} style={{ margin: 0, fontFamily: '"Syne", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: '#e2e8f0' }}>
-                  本地代码审查
-                </Typography.Title>
-                <Typography.Text style={{ fontSize: '11px', color: '#4a5568' }}>
-                  选择白名单目录下的代码并发起流式分析
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <Button size="small" onClick={() => setActiveMode('chat')}>
-                返回对话
-              </Button>
-              <Button
-                type="primary"
-                size="small"
-                danger={localCodeStream.status === 'running'}
-                onClick={() => localCodeStream.stop()}
-              >
-                停止
-              </Button>
-            </div>
+            {renderHeader('local-code')}
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'grid', gap: 18 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'grid', gap: 18 }}>
             <FolderSelector
               folderPath={folderPath}
               fileFilters={fileFilters}
@@ -127,11 +174,9 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '280px minmax(0, 1fr)', gap: 0, height: '100vh' }}>
-
-      {/* Sidebar */}
       <aside style={{
-        borderRight: '1px solid rgba(148,163,184,0.06)',
-        background: '#0d1424',
+        borderRight: '1px solid var(--border-default)',
+        background: 'var(--bg-primary)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -145,78 +190,21 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
         />
       </aside>
 
-      {/* Main */}
-      <section style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#060b14' }}>
-
-        {/* Header */}
+      <section style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-void)' }}>
         <div style={{
-          padding: '22px 28px 18px',
-          borderBottom: '1px solid rgba(148,163,184,0.06)',
+          padding: '22px 28px 0',
+          borderBottom: '1px solid var(--border-default)',
           background: 'linear-gradient(180deg, rgba(6,182,212,0.03) 0%, transparent 100%)',
           flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(6,182,212,0.15))',
-              border: '1px solid rgba(124,58,237,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <MessageSquare size={18} color="#8b5cf6" />
-            </div>
-            <div>
-              <Typography.Title level={4} style={{ margin: 0, fontFamily: '"Syne", sans-serif', fontWeight: 700, fontSize: '1.1rem', color: '#e2e8f0' }}>
-                对话工作台
-              </Typography.Title>
-              <Typography.Text style={{ fontSize: '11px', color: '#4a5568' }}>
-                {sessionId ? `会话 ${sessionId}` : '新建会话'}
-              </Typography.Text>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <Button
-              type={activeMode === 'chat' ? 'primary' : 'default'}
-              size="small"
-              onClick={() => setActiveMode('chat')}
-            >
-              对话工作台
-            </Button>
-            <Button
-              type="default"
-              size="small"
-              onClick={() => setActiveMode('local-code')}
-            >
-              本地代码审查
-            </Button>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-            {[
-              { label: '快速问答', icon: MessageSquare, color: '#06b6d4' },
-              { label: '深度分析', icon: Sparkles, color: '#7c3aed' },
-              { label: 'PDF 规范', icon: Zap, color: '#ec4899' },
-            ].map((tag) => (
-              <div key={tag.label} style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '3px 10px',
-                background: `${tag.color}0a`,
-                border: `1px solid ${tag.color}22`,
-                borderRadius: 99,
-                fontSize: '11px',
-                color: tag.color,
-                fontWeight: 500,
-              }}>
-                <tag.icon size={11} />
-                {tag.label}
-              </div>
-            ))}
-          </div>
+          {renderHeader('chat')}
+          {renderQuickTags()}
         </div>
 
-        {/* Messages */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '24px 28px',
+          padding: '20px 24px',
           scrollBehavior: 'smooth',
         }}>
           {messages.length ? (
@@ -226,10 +214,10 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
               <Empty
                 description={
                   <Space direction="vertical" size={4} style={{ textAlign: 'center' }}>
-                    <Typography.Text style={{ color: '#4a5568', fontSize: '14px' }}>
+                    <Typography.Text style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
                       {loadingHistory ? '正在加载会话消息...' : '发送第一条消息，开启智能分析'}
                     </Typography.Text>
-                    <Typography.Text style={{ color: '#2d3748', fontSize: '12px' }}>
+                    <Typography.Text style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                       {loadingHistory ? 'Loading...' : 'Start your first analysis'}
                     </Typography.Text>
                   </Space>
@@ -250,21 +238,14 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
           )}
         </div>
 
-        {/* Composer */}
-        <div style={{
-          padding: '18px 28px 22px',
-          borderTop: '1px solid rgba(148,163,184,0.06)',
-          background: '#0d1424',
-          flexShrink: 0,
-        }}>
-          {/* Mode buttons */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <div className="chat-composer">
+          <div className="chat-composer__actions">
             <Button
               type="primary"
               size="small"
               loading={sending}
               onClick={() => void sendSimpleMessage()}
-              style={{ fontSize: '12.5px' }}
+              style={{ fontSize: '12.5px', height: 30 }}
             >
               <MessageSquare size={13} /> 快速问答
             </Button>
@@ -272,7 +253,7 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
               size="small"
               loading={sending}
               onClick={() => void sendDeepAnalysis()}
-              style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)', color: '#c4b5fd', fontSize: '12.5px' }}
+              style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)', color: '#c4b5fd', fontSize: '12.5px', height: 30 }}
             >
               <Sparkles size={13} /> 深度分析
             </Button>
@@ -280,7 +261,6 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
             <FileUpload uploading={uploading} onUpload={uploadNormFile} />
           </div>
 
-          {/* Textarea */}
           <Input.TextArea
             value={draft}
             autoSize={{ minRows: 2, maxRows: 8 }}
@@ -290,20 +270,7 @@ export function ChatPage({ sessionId, sessions, currentProjectId, onSessionChang
               fontSize: '14px',
               lineHeight: 1.6,
               fontFamily: '"Noto Sans SC", sans-serif',
-              background: '#080d1a',
-              border: '1px solid rgba(148,163,184,0.1)',
-              borderRadius: 10,
-              padding: '10px 14px',
               resize: 'none',
-              transition: 'all 0.15s ease',
-            }}
-            onFocus={(e) => {
-              ;(e.currentTarget as HTMLTextAreaElement).style.borderColor = 'rgba(6,182,212,0.4)'
-              ;(e.currentTarget as HTMLTextAreaElement).style.boxShadow = '0 0 0 3px rgba(6,182,212,0.08)'
-            }}
-            onBlur={(e) => {
-              ;(e.currentTarget as HTMLTextAreaElement).style.borderColor = 'rgba(148,163,184,0.1)'
-              ;(e.currentTarget as HTMLTextAreaElement).style.boxShadow = 'none'
             }}
           />
         </div>

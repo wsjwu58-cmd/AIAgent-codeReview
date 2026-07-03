@@ -21,6 +21,8 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
   const [submitting, setSubmitting] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [activeKeys, setActiveKeys] = useState<string[]>([])
+  const [form] = Form.useForm()
+  const reviewType = Form.useWatch('type', form) as ReviewType | undefined
 
   const stream = useAgentStream(sessionId)
   const agentOutputs = useMemo(() => {
@@ -93,8 +95,8 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
       onCreated(summary.sessionId, summary.reviewId)
       await loadReviewDetail(summary.reviewId, { silent: true, suppressError: true })
       message.success('已提交审查任务，正在生成结果')
-    } catch {
-      message.error('提交失败，请检查输入内容')
+    } catch (err) {
+      message.error(extractApiErrorMessage(err, '提交失败，请检查输入内容'))
     } finally {
       setSubmitting(false)
     }
@@ -248,21 +250,16 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 28 }} className="animate-in">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 10,
-            background: 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(124,58,237,0.15))',
-            border: '1px solid rgba(6,182,212,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+      <div className="page-header">
+        <div className="page-header__row">
+          <div className="page-header__icon">
             <FileSearch size={20} color="#06b6d4" />
           </div>
-          <Typography.Title level={2} style={{ margin: 0, fontFamily: '"Syne", sans-serif', fontWeight: 700, fontSize: '1.6rem', color: '#e2e8f0' }}>
+          <Typography.Title level={2} className="page-header__title">
             代码审查
           </Typography.Title>
         </div>
-        <Typography.Paragraph style={{ color: '#64748b', margin: 0, fontSize: '0.875rem' }}>
+        <Typography.Paragraph className="page-header__desc">
           提交代码进行 AI 多 Agent 协作审查，获得问题分析、重构建议与完整报告。
         </Typography.Paragraph>
       </div>
@@ -270,15 +267,15 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
       {/* Submit card */}
       <Card
         style={{
-          background: 'rgba(13,20,36,0.8)',
-          border: '1px solid rgba(148,163,184,0.08)',
-          borderRadius: 16,
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
           marginBottom: 20,
         }}
-        styles={{ header: { borderBottom: '1px solid rgba(148,163,184,0.06)', padding: '16px 22px' }, body: { padding: '22px' } }}
+        styles={{ header: { borderBottom: '1px solid var(--border-default)', padding: '16px 22px' }, body: { padding: '22px' } }}
         className="animate-in animate-in-1"
       >
-        <Form layout="vertical" onFinish={onSubmit} initialValues={{ type: 'PASTE_CODE', language: 'java' }}>
+        <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={{ type: 'PASTE_CODE', language: 'java' }}>
           <Row gutter={16}>
             <Col xs={24} md={8}>
               <Form.Item name="type" label={<span style={labelStyle}>审查类型</span>}>
@@ -319,20 +316,32 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
                     <Input placeholder="java / python / ts" />
                   </Form.Item>
                 </Col>
-                <Col span={24}>
-                  <Form.Item name="repoUrl" label={<span style={labelStyle}>仓库地址（Git 审查时）</span>}>
-                    <Input placeholder="输入 Git 仓库地址" prefix={<span style={{ color: '#4a5568', fontSize: 12 }}>git://</span>} />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item name="codeContent" label={<span style={labelStyle}>代码内容（粘贴审查时）</span>}>
-                    <Input.TextArea
-                      rows={5}
-                      placeholder="粘贴需要审查的代码"
-                      style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '12.5px' }}
-                    />
-                  </Form.Item>
-                </Col>
+                {reviewType === 'GIT_DIFF' ? (
+                  <Col span={24}>
+                    <Row gutter={12}>
+                      <Col xs={24} md={16}>
+                        <Form.Item name="repoUrl" label={<span style={labelStyle}>仓库地址</span>}>
+                          <Input placeholder="输入 Git 仓库地址" prefix={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>git://</span>} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item name="branch" label={<span style={labelStyle}>分支</span>}>
+                          <Input placeholder="如 main / master / dev" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : (
+                  <Col span={24}>
+                    <Form.Item name="codeContent" label={<span style={labelStyle}>代码内容</span>}>
+                      <Input.TextArea
+                        rows={5}
+                        placeholder="粘贴需要审查的代码"
+                        style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '12.5px' }}
+                      />
+                    </Form.Item>
+                  </Col>
+                )}
               </Row>
             </Col>
           </Row>
@@ -375,9 +384,9 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
           defaultActiveKey={['progress', 'agents', 'results', 'report']}
           collapsible="icon"
           style={{
-            background: 'rgba(13,20,36,0.4)',
-            border: '1px solid rgba(148,163,184,0.06)',
-            borderRadius: 16,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-lg)',
           }}
           className="animate-in animate-in-2"
         />
@@ -386,9 +395,9 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
       {!hasResults && (
         <Card
           style={{
-            background: 'rgba(13,20,36,0.4)',
-            border: '1px solid rgba(148,163,184,0.06)',
-            borderRadius: 16,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-lg)',
             textAlign: 'center',
             padding: '60px 0',
           }}
@@ -401,10 +410,10 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
               <defs><linearGradient id="rq" x1="0" y1="0" x2="56" y2="56"><stop stopColor="#06b6d4"/><stop offset="1" stopColor="#7c3aed"/></linearGradient></defs>
             </svg>
           </div>
-          <Typography.Paragraph style={{ color: '#4a5568', fontSize: '0.95rem' }}>
+          <Typography.Paragraph style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base)' }}>
             提交代码审查后，结果将在此展示
           </Typography.Paragraph>
-          <Typography.Text style={{ color: '#2d3748', fontSize: '0.8rem', display: 'block', marginTop: 6 }}>
+          <Typography.Text style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', display: 'block', marginTop: 6 }}>
             Submit code for review to see results here
           </Typography.Text>
         </Card>
@@ -413,8 +422,16 @@ export function ReviewPage({ onCreated, currentReviewId, currentSessionId }: Pro
   )
 }
 
+function extractApiErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const response = (err as { response?: { data?: { message?: string } } }).response
+    if (response?.data?.message) return response.data.message
+  }
+  return fallback
+}
+
 const labelStyle: React.CSSProperties = {
-  color: '#94a3b8',
+  color: 'var(--text-secondary)',
   fontSize: '12px',
   fontWeight: 500,
   letterSpacing: '0.02em',

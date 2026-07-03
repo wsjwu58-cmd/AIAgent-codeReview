@@ -54,14 +54,11 @@ public class DocumentationSpecialistAgent extends SpecialistAgent {
     @Override
     protected List<String> preferredToolNames() {
         return List.of(
+                "git_diff_fetch",
                 "file_operation",
-                "local_file_list",
-                "local_file_read",
-                "local_file_search",
                 "code_search",
                 "norm_search",
-                "review_history_search",
-                "git_diff_fetch"
+                "review_history_search"
         );
     }
 

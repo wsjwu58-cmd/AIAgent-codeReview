@@ -81,11 +81,7 @@ public class ReviewSpecialistAgent extends SpecialistAgent {
                 "session_memory_read",
                 "chat_history_search",
                 "norm_search",
-                "code_search",
-                "file_operation",
-                "local_file_list",
-                "local_file_read",
-                "local_file_search"
+                "code_search"
         );
     }
 

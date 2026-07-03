@@ -140,6 +140,8 @@ public class ReviewService {
         String sessionId = detail.getSessionId();
         long start = System.currentTimeMillis();
 
+        waitForSseRegistration(sessionId);
+
         try {
             throwIfCancelled(sessionId, taskCancelVersion);
             String cacheKey = reviewResultCache.generateCacheKey(codeContent, safeLanguage(request.language()), "v1");
@@ -422,6 +424,22 @@ public class ReviewService {
     private void throwIfCancelled(String sessionId, long taskCancelVersion) {
         if (currentCancelVersion(sessionId) > taskCancelVersion) {
             throw new CancellationException("用户已取消任务");
+        }
+    }
+
+    private void waitForSseRegistration(String sessionId) {
+        long maxWaitMs = 5000L;
+        long waitStart = System.currentTimeMillis();
+        try {
+            while (!sseEmitterManager.isRegistered(sessionId)
+                    && System.currentTimeMillis() - waitStart < maxWaitMs) {
+                Thread.sleep(100L);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        if (!sseEmitterManager.isRegistered(sessionId)) {
+            log.warn("SSE等待超时，早期事件可能丢失。maxWaitMs={}, sessionId={}", maxWaitMs, sessionId);
         }
     }
 

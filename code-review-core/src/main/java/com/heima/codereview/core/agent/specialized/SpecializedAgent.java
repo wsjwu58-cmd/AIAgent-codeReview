@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.heima.codereview.core.agent.AgentTextGenerator;
 import com.heima.codereview.core.agent.BaseAgent;
+import com.heima.codereview.core.agent.conversational.ReactStreamListener;
 import com.heima.codereview.core.agent.react.ReactContext;
 import com.heima.codereview.core.agent.react.ReactDecision;
 import com.heima.codereview.core.agent.react.ReactState;
@@ -18,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,8 +57,30 @@ public abstract class SpecializedAgent extends BaseAgent {
             "web_search",
             "git_diff_fetch",
             "file_operation",
-            "code_search"
+            "code_search",
+            "local_file_list",
+            "local_file_read",
+            "local_file_search"
     );
+    private static final List<String> LOCAL_FILE_TOOLS = List.of(
+            "local_file_list",
+            "local_file_read",
+            "local_file_write",
+            "local_file_search",
+            "local_file_delete"
+    );
+    // 仓库审查场景下必须禁用的本地相关工具：local_file_* 直接读写审查服务器本地磁盘，
+    // file_operation 把 repoUrl 当本地路径解析（见 FileOperationTool.resolveBasePath），
+    // 同样不访问被审查的远程仓库，会污染审查依据，故一并禁用。
+    private static final List<String> LOCAL_BOUND_TOOLS = List.of(
+            "local_file_list",
+            "local_file_read",
+            "local_file_write",
+            "local_file_search",
+            "local_file_delete",
+            "file_operation"
+    );
+    private static final String LOCAL_CODE_SPECIALIST_ID = "local-code-specialist";
     private static final int MAX_PLANNING_TOOL_RESULTS = 4;
     private static final int MAX_PLANNING_TOOL_RESULT_LENGTH = 320;
     private static final int MAX_TOOL_QUERY_LENGTH = 320;
@@ -144,6 +168,13 @@ public abstract class SpecializedAgent extends BaseAgent {
     }
 
     public String generateAnalysis(String userMessage, ReactContext context, List<ToolCallResult> toolResults) {
+        return generateAnalysis(userMessage, context, toolResults, null);
+    }
+
+    public String generateAnalysis(String userMessage,
+                                   ReactContext context,
+                                   List<ToolCallResult> toolResults,
+                                   ReactStreamListener listener) {
         String input = """
                 [User Question]
                 %s
@@ -203,11 +234,20 @@ public abstract class SpecializedAgent extends BaseAgent {
         );
         Map<String, Object> generationContext = buildBaseContext(context);
         generationContext.put("disableToolCallbacks", true);
+        String agentId = specialistId();
+        Consumer<String> chunkHandler = listener == null
+                ? null
+                : chunk -> {
+                    if (chunk != null && !chunk.isEmpty()) {
+                        listener.onAgentStream(agentId, chunk);
+                    }
+                };
         String generated = textGenerator.generate(
                 getName(),
                 getSpecialistSystemPrompt(),
                 input,
-                generationContext
+                generationContext,
+                chunkHandler
         );
         if (generated != null && !generated.isBlank()) {
             return generated.trim();
@@ -216,13 +256,37 @@ public abstract class SpecializedAgent extends BaseAgent {
     }
 
     protected List<McpToolDefinition> availableTools() {
+        return availableTools(null);
+    }
+
+    protected List<McpToolDefinition> availableTools(ReactContext context) {
         if (mcpClient == null) {
             return List.of();
         }
         List<String> preferred = preferredToolNames();
+        boolean suppressLocalFileTools = context != null
+                && isRepositoryReviewScenario(context)
+                && !LOCAL_CODE_SPECIALIST_ID.equals(specialistId());
         return mcpClient.listTools().stream()
                 .filter(tool -> preferred.isEmpty() || preferred.contains(tool.name()))
+                .filter(tool -> !suppressLocalFileTools || !isLocalBoundTool(tool.name()))
                 .toList();
+    }
+
+    protected boolean isRepositoryReviewScenario(ReactContext context) {
+        if (context == null || context.conversationContext() == null) {
+            return false;
+        }
+        String repoUrl = safe(context.conversationContext().repoUrl());
+        return !repoUrl.isBlank();
+    }
+
+    protected boolean isLocalFileTool(String toolName) {
+        return toolName != null && LOCAL_FILE_TOOLS.contains(toolName);
+    }
+
+    protected boolean isLocalBoundTool(String toolName) {
+        return toolName != null && LOCAL_BOUND_TOOLS.contains(toolName);
     }
 
     protected Map<String, Object> buildDefaultToolParams(String toolName,
@@ -275,6 +339,13 @@ public abstract class SpecializedAgent extends BaseAgent {
             return Integer.MIN_VALUE;
         }
 
+        boolean repositoryReview = isRepositoryReviewScenario(context);
+        if (repositoryReview
+                && isLocalBoundTool(toolName)
+                && !LOCAL_CODE_SPECIALIST_ID.equals(specialistId())) {
+            return Integer.MIN_VALUE;
+        }
+
         int score = preferredToolNames().contains(toolName) ? 20 : 0;
         String normalized = safe(userMessage).toLowerCase();
         String localPath = extractCandidatePath(userMessage);
@@ -282,9 +353,9 @@ public abstract class SpecializedAgent extends BaseAgent {
         boolean hasLocalPath = !localPath.isBlank();
         if ("git_diff_fetch".equals(toolName)
                 && !state.hasToolCall(toolName)
-                && !safe(context.conversationContext().repoUrl()).isBlank()
+                && repositoryReview
                 && !context.conversationContext().hasRepositoryContext()) {
-            score += 100;
+            score += 200;
         }
         if ("review_history_search".equals(toolName)
                 && (!state.hasToolCall(toolName)
@@ -425,7 +496,7 @@ public abstract class SpecializedAgent extends BaseAgent {
         if (!textGenerator.available()) {
             return null;
         }
-        List<McpToolDefinition> tools = availableTools();
+        List<McpToolDefinition> tools = availableTools(context);
         if (tools.isEmpty()) {
             return ReactDecision.finish("No registered tools are available, finish with the collected evidence.", "", "no_tools");
         }
@@ -434,14 +505,22 @@ public abstract class SpecializedAgent extends BaseAgent {
         planningContext.put("disableToolCallbacks", true);
         planningContext.put("scene", specialistId() + "-planner");
 
+        boolean repositoryReview = isRepositoryReviewScenario(context);
+        String sceneDescription = repositoryReview
+                ? "REPOSITORY REVIEW SCENE: repoUrl is configured. You MUST base your analysis on the repository diff fetched via git_diff_fetch. local_file_* and file_operation tools are DISABLED because they read the review server's own working directory, NOT the reviewed repository."
+                : "GENERAL SCENE: no repoUrl is configured. Use local_file_* tools only for explicit local code analysis tasks.";
+
         String input = """
-                You are planning the next ReAct step for a specialist agent.
+                You are planning the next ReAct step for a specialist agent: %s
                 Decide whether to call exactly one tool or finish.
 
                 [User Question]
                 %s
 
                 [Current Iteration]
+                %s
+
+                [Scene]
                 %s
 
                 [Repository]
@@ -454,18 +533,14 @@ public abstract class SpecializedAgent extends BaseAgent {
                 %s
 
                 Planning rules (STRICT - must follow):
-                1. PRIORITY: For code review tasks, you MUST first call norm_search to retrieve project standards before analyzing code.
-                2. EXISTING DATA: Check [Observed Tool Results] first. If git_diff_fetch already returned code/diff, do NOT call it again.
-                3. NO REPEAT: You MUST NOT call any tool that was already called in previous iterations.
+                1. Tool selection priority depends on your specialist role:
+                %s
+                2. EXISTING DATA: Check [Observed Tool Results] first. If git_diff_fetch already returned code, do NOT call it again. Base your analysis on the fetched diff.
+                3. NO REPEAT: Do NOT call any tool already shown in [Observed Tool Results].
                 4. ONE TOOL: Each tool can only be called ONCE per session.
-                5. REUSE: If you need data that was already retrieved, use the existing results instead of re-fetching.
-                6. FINISH if: The provided code or current evidence is already enough to analyze the issue.
-                7. Never override sessionId, projectId, repoUrl, branch, or language from the current context.
-
-                Tool selection priority for review tasks:
-                - norm_search (MUST be called first for review tasks)
-                - review_history_search (optional, for historical patterns)
-                - Then analysis tools if norms are already retrieved
+                5. FINISH if: The provided code, repository diff, or current evidence is already enough to analyze the issue. Prefer FINISH over calling low-value tools.
+                6. Never override sessionId, projectId, repoUrl, branch, or language from the current context.
+                7. In REPOSITORY REVIEW SCENE, NEVER call local_file_* or file_operation tools. They operate on the review server's local filesystem, not the reviewed repository.
 
                 Output JSON only:
                 {
@@ -477,11 +552,14 @@ public abstract class SpecializedAgent extends BaseAgent {
                   "terminationReason": "..."
                 }
                 """.formatted(
+                specialistId(),
                 safe(userMessage),
                 state.iteration(),
+                sceneDescription,
                 context.conversationContext().repositorySummary(),
                 formatPlanningToolResults(state.toolResults()),
-                formatToolDefinitions(tools)
+                formatToolDefinitions(tools),
+                buildToolSelectionGuide(context)
         );
 
         String raw = textGenerator.generate(
@@ -491,6 +569,83 @@ public abstract class SpecializedAgent extends BaseAgent {
                 planningContext
         );
         return parseDecision(raw, tools, userMessage, context, state);
+    }
+
+    private String buildToolSelectionGuide(ReactContext context) {
+        boolean repositoryReview = isRepositoryReviewScenario(context);
+        if (repositoryReview && !LOCAL_CODE_SPECIALIST_ID.equals(specialistId())) {
+            String banNote = "Do NOT use local_file_* or file_operation tools. They read the review server's own working directory, NOT the reviewed repository.";
+            return switch (specialistId()) {
+                case "security-specialist" -> """
+                       - git_diff_fetch: FIRST and PRIMARY, fetch the repository diff to locate security risks in recent changes
+                       - code_search: For searching related code patterns in the repository
+                       - norm_search: For retrieving security standards/guidelines
+                       - web_search: For looking up CVE/CWE references
+                       """ + banNote;
+                case "review-specialist" -> """
+                       - git_diff_fetch: FIRST and PRIMARY, fetch the repository diff for review
+                       - review_history_search: Check if similar reviews exist
+                       - code_search: For searching related code in the repository
+                       - code_refactor: Generate refactoring suggestions last
+                       """ + banNote;
+                case "performance-specialist" -> """
+                       - git_diff_fetch: FIRST and PRIMARY, fetch the repository diff to find performance hotspots
+                       - code_search: For finding related classes/methods
+                       - norm_search: For performance best practices
+                       """ + banNote;
+                case "architecture-specialist" -> """
+                       - git_diff_fetch: FIRST and PRIMARY, fetch the repository diff to assess architectural impact
+                       - code_search: For searching architectural patterns and dependencies
+                       """ + banNote;
+                case "rag-specialist" -> """
+                       - norm_search: PRIMARY tool for specification/knowledge retrieval
+                       - chat_history_search: For related past discussions
+                       - review_history_search: For historical review context
+                       """ + banNote;
+                case "documentation-specialist" -> """
+                       - git_diff_fetch: FIRST and PRIMARY, fetch the repository diff to generate implementation-facing docs
+                       - code_search: For searching related code in the repository
+                       - norm_search: For retrieving documentation standards
+                       """ + banNote;
+                default -> """
+                       - git_diff_fetch: FIRST, fetch the repository diff when repoUrl is configured
+                       - code_search: For repository-wide code search
+                       - norm_search: For knowledge/standard lookups
+                       """ + banNote;
+            };
+        }
+        return switch (specialistId()) {
+            case "security-specialist" -> """
+                   - code_search: For searching code patterns if repoUrl is configured
+                   - norm_search: For retrieving security standards/guidelines from knowledge base
+                   - web_search: For looking up CVE/CWE references
+                   Do NOT use code_refactor or review_history_search unless explicitly needed.""";
+            case "review-specialist" -> """
+                   - review_history_search: FIRST, check if similar reviews exist
+                   - git_diff_fetch: For reviewing recent changes when repoUrl is available
+                   - code_refactor: Generate refactoring suggestions last""";
+            case "performance-specialist" -> """
+                   - code_search: For finding related classes/methods
+                   - norm_search: For performance best practices from knowledge base""";
+            case "architecture-specialist" -> """
+                   - code_search: FIRST, search for architectural patterns and dependencies
+                   - file_operation: For reading key configuration files in the reviewed repository""";
+            case "rag-specialist" -> """
+                   - norm_search: PRIMARY tool for specification/knowledge retrieval
+                   - chat_history_search: For related past discussions
+                   - review_history_search: For historical review context""";
+            case "local-code-specialist" -> """
+                   - local_file_list: FIRST, list files if exploring a directory
+                   - local_file_read: For reading specific files
+                   - local_file_search: For searching file contents
+                   - local_file_write: For writing/modifying files
+                   Use local_file tools as the PRIMARY tools. Avoid norm_search unless explicitly asked.""";
+            default -> """
+                   - Analyze the user's question to determine which tool is most appropriate
+                   - local_file_search / local_file_read: For local code operations
+                   - norm_search: For knowledge/standard lookups
+                   - code_search: For repository-wide code search""";
+        };
     }
 
     private ReactDecision parseDecision(String raw,
@@ -538,7 +693,7 @@ public abstract class SpecializedAgent extends BaseAgent {
     }
 
     private ReactDecision fallbackDecision(String userMessage, ReactContext context, ReactState state) {
-        List<McpToolDefinition> tools = availableTools();
+        List<McpToolDefinition> tools = availableTools(context);
         McpToolDefinition bestTool = null;
         int bestScore = Integer.MIN_VALUE;
         for (McpToolDefinition tool : tools) {

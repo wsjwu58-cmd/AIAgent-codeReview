@@ -5,3 +5,25 @@
 /code-review-rag/target/
 /code-review-tools/target/
 deploy/.env
+
+# 前端
+front/node_modules/
+front/dist/assets/
+
+# 文档
+/文档/
+/docs/
+/attachments/
+/AGENTS.md
+/RAG_MODULE_OPTIMIZATION.md
+/code-review-api/CODE_REVIEW_API_MODULE.md
+/code-review-core/CODE_REVIEW_CORE_MODULE.md
+
+# IDE/工具配置
+.claude/
+.firecrawl/
+.trae/
+.idea/jsLibraryMappings.xml
+
+# 日志
+*.log

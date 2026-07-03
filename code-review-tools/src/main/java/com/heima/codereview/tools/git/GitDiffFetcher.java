@@ -25,6 +25,7 @@ public class GitDiffFetcher {
     private static final int MAX_SECTION_LENGTH = 6000;
     private static final int MIN_RESERVED_LENGTH = 400;
     private static final String EMPTY_DIFF_MESSAGE = "未获取到可用的仓库差异：当前仓库没有检测到可用差异。";
+    private static final int CLEAN_DIFF_TRUNCATE_THRESHOLD = 30000;
 
     public String fetchDiff(String repoUrl, String branch) {
         return fetchDiff(repoUrl, branch, null);
@@ -49,9 +50,16 @@ public class GitDiffFetcher {
                     repoUrl, blankToEmpty(branch), blankToEmpty(baseCommit), blankToEmpty(headCommit),
                     blankToEmpty(language), snapshot.path(), snapshot.remote(), strategy);
 
-            String diff = buildDiffContent(snapshot, branch, baseCommit, headCommit).trim();
-            if (diff.isBlank()) {
+            String rawDiff = buildDiffContent(snapshot, branch, baseCommit, headCommit).trim();
+            if (rawDiff.isBlank()) {
                 log.info("Git差异为空。repoUrl={}, branch={}, localPath={}, strategy={}",
+                        repoUrl, blankToEmpty(branch), snapshot.path(), strategy);
+                return EMPTY_DIFF_MESSAGE;
+            }
+
+            String diff = DiffCleaner.clean(rawDiff);
+            if (diff.isBlank()) {
+                log.info("Git差异清洗后为空，可能只包含非代码变更。repoUrl={}, branch={}, localPath={}, strategy={}",
                         repoUrl, blankToEmpty(branch), snapshot.path(), strategy);
                 return EMPTY_DIFF_MESSAGE;
             }
@@ -60,8 +68,7 @@ public class GitDiffFetcher {
             if (diff.length() > MAX_DIFF_LENGTH) {
                 log.info("Git差异过长，执行最终截断。repoUrl={}, branch={}, originalLength={}, keptLength={}",
                         repoUrl, blankToEmpty(branch), diff.length(), MAX_DIFF_LENGTH);
-                diff = diff.substring(0, MAX_DIFF_LENGTH)
-                        + "\n\n[差异内容仍然过长，已截断，仅保留前 " + MAX_DIFF_LENGTH + " 个字符用于AI审查]";
+                diff = truncateAtHunkBoundary(diff, MAX_DIFF_LENGTH);
             }
 
             log.info("获取Git差异成功。repoUrl={}, branch={}, localPath={}, diffLength={}, strategy={}",
@@ -159,6 +166,7 @@ public class GitDiffFetcher {
     }
 
     private String formatDiff(String title, String commitLog, String diff) {
+        // 保持最小元数据，实际清洗由 DiffCleaner 完成
         StringBuilder builder = new StringBuilder();
         builder.append("# Git审查上下文\n");
         builder.append("策略: ").append(title).append("\n\n");
@@ -169,6 +177,19 @@ public class GitDiffFetcher {
         builder.append("## 代码差异\n");
         builder.append(diff == null ? "" : diff.trim());
         return builder.toString();
+    }
+
+    private String truncateAtHunkBoundary(String diff, int maxLength) {
+        if (diff == null || diff.length() <= maxLength) {
+            return diff;
+        }
+        int lastBoundary = diff.lastIndexOf("\n@@", maxLength);
+        if (lastBoundary <= 0) {
+            lastBoundary = maxLength;
+        }
+        return diff.substring(0, lastBoundary)
+                + "\n\n[差异内容仍然过长，已按 hunk 边界截断，仅保留前 "
+                + lastBoundary + " 个字符用于AI审查]";
     }
 
     private String prepareReviewContext(String diff, String language) {
@@ -376,7 +397,8 @@ public class GitDiffFetcher {
     }
 
     private String execute(String[] command) throws Exception {
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        String[] effectiveCommand = disableGitProxy(command);
+        ProcessBuilder processBuilder = new ProcessBuilder(effectiveCommand);
         processBuilder.redirectErrorStream(true);
         Process process = processBuilder.start();
         StringBuilder output = new StringBuilder();
@@ -393,6 +415,20 @@ public class GitDiffFetcher {
                     : output.toString().trim());
         }
         return output.toString();
+    }
+
+    private String[] disableGitProxy(String[] command) {
+        if (command.length == 0 || !"git".equals(command[0])) {
+            return command;
+        }
+        String[] effective = new String[command.length + 4];
+        effective[0] = "git";
+        effective[1] = "-c";
+        effective[2] = "http.proxy=";
+        effective[3] = "-c";
+        effective[4] = "https.proxy=";
+        System.arraycopy(command, 1, effective, 5, command.length - 1);
+        return effective;
     }
 
     private boolean isRemoteRepository(String repoUrl) {

@@ -16,8 +16,7 @@ export function PdfUploadPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-
-      formData.append('projectId', 'default'); // 默认项目ID
+      formData.append('projectId', 'default')
 
       const response = await fetch('/api/chat/upload-norm', {
         method: 'POST',
@@ -52,18 +51,28 @@ export function PdfUploadPage() {
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <Typography.Title level={3} style={{ marginBottom: '24px', color: '#f1f5f9' }}>
-        PDF 文件上传
-      </Typography.Title>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
+      <div className="page-header">
+        <div className="page-header__row">
+          <div className="page-header__icon">
+            <UploadIcon size={20} color="#06b6d4" />
+          </div>
+          <Typography.Title level={2} className="page-header__title">
+            PDF 规范上传
+          </Typography.Title>
+        </div>
+        <Typography.Paragraph className="page-header__desc">
+          上传 PDF 格式规范文档，AI 将在代码审查和对话中引用这些规范。
+        </Typography.Paragraph>
+      </div>
 
       <Card
         style={{
-          background: '#1e293b',
-          border: '2px dashed #334155',
-          borderRadius: '16px',
+          background: 'var(--bg-card)',
+          border: '2px dashed var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
           textAlign: 'center',
-          padding: '48px 24px',
+          overflow: 'hidden',
         }}
         styles={{ body: { padding: '48px 24px' } }}
       >
@@ -71,27 +80,28 @@ export function PdfUploadPage() {
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div
               style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '16px',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                width: 64,
+                height: 64,
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--aurora-gradient)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto',
+                boxShadow: '0 8px 24px rgba(6,182,212,0.25)',
               }}
             >
-              <UploadIcon style={{ width: '32px', height: '32px', color: 'white' }} />
+              <UploadIcon style={{ width: 32, height: 32, color: 'white' }} />
             </div>
             <div>
-              <Typography.Title level={4} style={{ margin: 0, color: '#f1f5f9' }}>
+              <Typography.Title level={4} style={{ margin: 0, color: 'var(--text-primary)', fontSize: 'var(--text-xl)' }}>
                 点击或拖拽 PDF 文件到此处上传
               </Typography.Title>
-              <Typography.Text style={{ color: '#64748b' }}>
+              <Typography.Text style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
                 支持 .pdf 格式文件
               </Typography.Text>
             </div>
-            <Button type="primary" loading={uploading} size="large" icon={<UploadIcon style={{ width: '18px', height: '18px' }} />}>
+            <Button type="primary" loading={uploading} size="large" icon={<UploadIcon style={{ width: 18, height: 18 }} />}>
               选择文件
             </Button>
           </Space>
@@ -99,19 +109,33 @@ export function PdfUploadPage() {
       </Card>
 
       {uploadedFiles.length > 0 && (
-        <Card style={{ marginTop: '24px', background: '#1e293b', border: '1px solid #334155', borderRadius: '16px' }}>
-          <Typography.Title level={5} style={{ marginBottom: '16px', color: '#f1f5f9' }}>
+        <Card style={{
+          marginTop: 24,
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
+        }}>
+          <Typography.Title level={5} style={{ marginBottom: 16, color: 'var(--text-primary)', fontSize: 'var(--text-lg)' }}>
             上传记录
           </Typography.Title>
-          <Divider style={{ borderColor: '#334155', margin: '12px 0' }} />
+          <Divider style={{ borderColor: 'var(--border-default)', margin: '12px 0' }} />
           {uploadedFiles.map((file, index) => (
-            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
-              <FileText style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
-              <Typography.Text style={{ flex: 1, color: '#f1f5f9' }}>{file.name}</Typography.Text>
+            <div
+              key={index}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(148,163,184,0.03)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+            >
+              <FileText style={{ width: 20, height: 20, color: '#60a5fa' }} />
+              <Typography.Text style={{ flex: 1, color: 'var(--text-primary)' }}>{file.name}</Typography.Text>
               {file.status === 'success' ? (
-                <CheckCircle style={{ width: '18px', height: '18px', color: '#22c55e' }} />
+                <CheckCircle style={{ width: 18, height: 18, color: '#22c55e' }} />
               ) : (
-                <AlertCircle style={{ width: '18px', height: '18px', color: '#ef4444' }} />
+                <AlertCircle style={{ width: 18, height: 18, color: '#ef4444' }} />
               )}
             </div>
           ))}

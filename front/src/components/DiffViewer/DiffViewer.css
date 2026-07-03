@@ -1,0 +1,130 @@
+.diff-viewer {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.diff-file + .diff-file {
+  border-top: 1px solid var(--border-default);
+}
+
+.diff-file-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(6, 182, 212, 0.08);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 13px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+.diff-file-header svg {
+  flex-shrink: 0;
+}
+
+.diff-hunk-header {
+  display: flex;
+  padding: 6px 0;
+  background: rgba(59, 130, 246, 0.1);
+  color: #93c5fd;
+  font-size: 12px;
+}
+
+.diff-hunk-header .diff-gutter {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.diff-row {
+  display: flex;
+  min-height: 24px;
+}
+
+.diff-row:hover {
+  background: rgba(148, 163, 184, 0.05);
+}
+
+.diff-gutter {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+}
+
+.diff-line-old,
+.diff-line-new {
+  width: 48px;
+  padding: 1px 10px;
+  border-right: 1px solid var(--border-default);
+  box-sizing: border-box;
+}
+
+.diff-marker {
+  width: 22px;
+  padding: 1px 6px;
+  border-right: 1px solid var(--border-default);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.diff-content {
+  flex: 1;
+  padding: 1px 12px;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text-secondary);
+}
+
+.diff-row.add {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.diff-row.add .diff-line-new,
+.diff-row.add .diff-marker {
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+}
+
+.diff-row.add .diff-content {
+  color: #86efac;
+}
+
+.diff-row.del {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.diff-row.del .diff-line-old,
+.diff-row.del .diff-marker {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.diff-row.del .diff-content {
+  color: #fca5a5;
+}
+
+.diff-row.context .diff-marker {
+  color: #475569;
+}
+
+.diff-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.diff-viewer pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}

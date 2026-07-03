@@ -1,0 +1,72 @@
+[
+  {
+    "id": "QUAL-001",
+    "userQuery": "这段 SQL 是否有注入风险：String sql = \"SELECT * FROM users WHERE id=\" + userId; Statement stmt = conn.createStatement(); stmt.executeQuery(sql);",
+    "agentId": "security-specialist",
+    "agentResponse": "",
+    "expectedKeyPoints": "SQL注入,字符串拼接,ParameterizedStatement,参数化查询,PreparedStatement"
+  },
+  {
+    "id": "QUAL-002",
+    "userQuery": "Java 中如何安全地存储密码",
+    "agentId": "general-coding",
+    "agentResponse": "",
+    "expectedKeyPoints": "BCrypt,哈希,加盐,不能明文存储,不能用MD5,不能用SHA1"
+  },
+  {
+    "id": "QUAL-003",
+    "userQuery": "这段文件下载代码有什么安全问题：File file = new File(\"/uploads/\" + filename); Files.copy(file.toPath(), resp.getOutputStream());",
+    "agentId": "security-specialist",
+    "agentResponse": "",
+    "expectedKeyPoints": "路径遍历,path traversal,文件名校验,..,目录穿越"
+  },
+  {
+    "id": "QUAL-004",
+    "userQuery": "如何避免日志泄露敏感信息",
+    "agentId": "general-coding",
+    "agentResponse": "",
+    "expectedKeyPoints": "脱敏,password,mask,日志脱敏,不记录密码,Token脱敏"
+  },
+  {
+    "id": "QUAL-005",
+    "userQuery": "这个异常处理有什么问题：catch (Exception e) { response.getWriter().write(e.getMessage()); e.printStackTrace(); }",
+    "agentId": "security-specialist",
+    "agentResponse": "",
+    "expectedKeyPoints": "信息泄露,getMessage,printStackTrace,内部错误,返回给客户端"
+  },
+  {
+    "id": "QUAL-006",
+    "userQuery": "如何使用 PreparedStatement 防止 SQL 注入",
+    "agentId": "general-coding",
+    "agentResponse": "",
+    "expectedKeyPoints": "PreparedStatement,参数化查询,setString,占位符,?"
+  },
+  {
+    "id": "QUAL-007",
+    "userQuery": "这段代码的密码存储是否安全：MessageDigest md = MessageDigest.getInstance(\"MD5\"); byte[] hash = md.digest(password.getBytes());",
+    "agentId": "security-specialist",
+    "agentResponse": "",
+    "expectedKeyPoints": "MD5不安全,弱哈希,BCrypt,加盐,PBKDF2"
+  },
+  {
+    "id": "QUAL-008",
+    "userQuery": "XSS 攻击是什么，如何在 Java Web 应用中防止",
+    "agentId": "general-coding",
+    "agentResponse": "",
+    "expectedKeyPoints": "XSS,HTML转义,HtmlUtils.htmlEscape,Content-Security-Policy,输入校验"
+  },
+  {
+    "id": "QUAL-009",
+    "userQuery": "这段代码的反序列化是否有风险：ObjectInputStream ois = new ObjectInputStream(new FileInputStream(\"data.dat\")); Object obj = ois.readObject();",
+    "agentId": "security-specialist",
+    "agentResponse": "",
+    "expectedKeyPoints": "反序列化漏洞,ObjectInputStream,类型校验,白名单,Java序列化"
+  },
+  {
+    "id": "QUAL-010",
+    "userQuery": "Java项目中 API Key 应该如何管理",
+    "agentId": "general-coding",
+    "agentResponse": "",
+    "expectedKeyPoints": "环境变量,不硬编码,application.yml,密钥管理,配置中心,Vault"
+  }
+]

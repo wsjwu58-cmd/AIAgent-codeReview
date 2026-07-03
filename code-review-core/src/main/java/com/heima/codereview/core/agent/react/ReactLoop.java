@@ -16,6 +16,17 @@ import java.util.List;
 public class ReactLoop implements AgentLoop {
 
     private static final int MAX_ITERATIONS = 5;
+    // 仓库审查场景下的本地相关工具集合：local_file_* 直接读写审查服务器本地磁盘，
+    // file_operation 把 repoUrl 当本地路径解析（见 FileOperationTool.resolveBasePath），
+    // 同样不访问被审查的远程仓库。git_diff_fetch 拿到差异后，这些工具都应被跳过。
+    private static final List<String> LOCAL_FILE_TOOLS = List.of(
+            "local_file_list",
+            "local_file_read",
+            "local_file_write",
+            "local_file_search",
+            "local_file_delete",
+            "file_operation"
+    );
 
     @Override
     public String loopType() {
@@ -53,7 +64,7 @@ public class ReactLoop implements AgentLoop {
             safeListener.onStep(thought);
 
             if (decision.action() != ReactDecision.Action.TOOL || decision.toolName().isBlank()) {
-                finalContent = resolveFinalContent(agent, userMessage, reactContext, toolResults, decision.finalAnswer());
+                finalContent = resolveFinalContent(agent, userMessage, reactContext, toolResults, decision.finalAnswer(), safeListener);
                 state = new ReactState(
                         steps,
                         toolResults,
@@ -76,7 +87,7 @@ public class ReactLoop implements AgentLoop {
                 steps.add(skipThought);
                 safeListener.onStep(skipThought);
 
-                String analysis = agent.generateAnalysis(userMessage, reactContext, toolResults);
+                String analysis = agent.generateAnalysis(userMessage, reactContext, toolResults, safeListener);
                 finalContent = analysis != null ? analysis : "";
                 state = new ReactState(
                         steps,
@@ -126,7 +137,7 @@ public class ReactLoop implements AgentLoop {
             );
 
             if (agent.shouldTerminate(state)) {
-                finalContent = resolveFinalContent(agent, userMessage, reactContext, toolResults, "");
+                finalContent = resolveFinalContent(agent, userMessage, reactContext, toolResults, "", safeListener);
                 state = new ReactState(
                         steps,
                         toolResults,
@@ -142,7 +153,7 @@ public class ReactLoop implements AgentLoop {
         }
 
         if (!completed) {
-            finalContent = resolveFinalContent(agent, userMessage, reactContext, toolResults, "");
+            finalContent = resolveFinalContent(agent, userMessage, reactContext, toolResults, "", safeListener);
             state = new ReactState(
                     steps,
                     toolResults,
@@ -169,11 +180,12 @@ public class ReactLoop implements AgentLoop {
                                        String userMessage,
                                        ReactContext reactContext,
                                        List<ToolCallResult> toolResults,
-                                       String plannedAnswer) {
+                                       String plannedAnswer,
+                                       ReactStreamListener listener) {
         if (plannedAnswer != null && !plannedAnswer.isBlank()) {
             return plannedAnswer.trim();
         }
-        return agent.generateAnalysis(userMessage, reactContext, toolResults);
+        return agent.generateAnalysis(userMessage, reactContext, toolResults, listener);
     }
 
     private boolean isLowValueObservation(ToolCallResult toolResult) {
@@ -200,7 +212,7 @@ public class ReactLoop implements AgentLoop {
             }
         }
 
-        if ("file_operation".equals(toolName) || "code_search".equals(toolName)) {
+        if ("file_operation".equals(toolName) || "code_search".equals(toolName) || LOCAL_FILE_TOOLS.contains(toolName)) {
             for (ToolCallResult result : toolResults) {
                 if (("git_diff_fetch".equals(result.toolName()))
                         && result.output() != null
